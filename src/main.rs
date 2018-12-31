@@ -103,12 +103,12 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 200;
-    const IMAGE_HEIGHT: i32 = 200;
+    const IMAGE_WIDTH: i32 = 64;
+    const IMAGE_HEIGHT: i32 = 64;
     let aspect = IMAGE_WIDTH as f64 / IMAGE_HEIGHT as f64;
-    const RAYS_PER_PIXEL: i32 = 1000;
+    const RAYS_PER_PIXEL: i32 = 100;
     const THREAD_CNT: i32 = 4;
-    const REPORT_INTERVAL: i32 = 100;
+    const REPORT_INTERVAL: i32 = 4;
     const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(

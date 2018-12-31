@@ -101,12 +101,7 @@ pub fn scene(aspect_ratio: f64) -> Scene {
         }
     }
     println!("smallsphres.len() = {}", small_spheres.len());
-    objs.push(Arc::new(BvhNode::new(
-        small_spheres,
-        0.0,
-        1.0,
-        &mut SeedableRng::from_seed([0; 32]),
-    )));
+    objs.push(Arc::new(BvhNode::new(small_spheres, 0.0, 1.0)));
     let objs = Arc::new(HitableList::new(objs));
     let look_from = Vec3::new(10.0, 1.0, 10.0);
     let look_at = Vec3::new(0.0, 1.0, 0.0);

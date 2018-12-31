@@ -4,7 +4,6 @@ use crate::hitable::empty::Empty;
 use crate::hitable::hitable_list::HitableList;
 use crate::hitable::Hitable;
 use crate::ray::Ray;
-use rand::StdRng;
 use std::sync::Arc;
 
 /// Bouding Volume Hierarchy node
@@ -19,7 +18,7 @@ impl BvhNode {
     /// Constructor
     /// time_0, time_1: used for moving hitables.
     /// list: each element should have non-None bounding box
-    pub fn new(mut list: Vec<Arc<Hitable>>, time_0: f64, time_1: f64, rng: &mut StdRng) -> Self {
+    pub fn new(mut list: Vec<Arc<Hitable>>, time_0: f64, time_1: f64) -> Self {
         if list.is_empty() {
             return BvhNode {
                 left: Arc::new(Empty::new()),
@@ -50,8 +49,8 @@ impl BvhNode {
             Self::sort_hitables_center(&mut list, axis, time_0, time_1);
             let former = list.split_off(idx);
             (
-                Arc::new(BvhNode::new(former, time_0, time_1, rng)),
-                Arc::new(BvhNode::new(list, time_0, time_1, rng)),
+                Arc::new(BvhNode::new(former, time_0, time_1)),
+                Arc::new(BvhNode::new(list, time_0, time_1)),
             )
         };
         let left_box = left.bounding_box(time_0, time_1).unwrap();

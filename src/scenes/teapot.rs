@@ -1,15 +1,18 @@
 use rand;
 use rand::SeedableRng;
+use ray::affine::Affine;
 use ray::aliases::Vec3;
-use ray::background::{AmbientLight};
+use ray::background::AmbientLight;
 use ray::camera::Camera;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::empty::Empty;
 use ray::hitable::hitable_list::HitableList;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
+use ray::hitable::transform::Transform;
 use ray::hitable::Hitable;
 use ray::material::diffuse_light::DiffuseLight;
+use ray::material::glass::Glass;
 use ray::material::lambertian::Lambertian;
 use ray::obj_file::ObjFile;
 use ray::scene::Scene;
@@ -40,46 +43,36 @@ pub fn scene(aspect_ratio: f64) -> Scene {
             &Vec3::new(2.5, 2.5, 2.5),
         )))),
     ))); // light
-         // objs.push(Sphere::boxed(
-         //     &Vec3::new(0.0, 1.0, 0.0),
-         //     1.0,
-         //     Glass::boxed(1.5, 0.0),
-         // )); // glass sphere
-         // objs.push(Transform::boxed(
-         //     BvhNode::boxed(
-         //         ObjFile::from_file(Path::new("res/cube.obj"))
-         //             .unwrap()
-         //             .groups[0]
-         //             .to_triangles(),
-         //         0.0,
-         //         1.0,
-         //         &mut rng,
-         //     ),
-         //     &Affine::scale(1.0 / 10.0, &Vec3::new(0.0, 0.0, 0.0)),
-         //     0.0,
-         //     1.0,
-         // ));
-    let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
-        .unwrap()
-        .groups[0];
-    teapot.set_smooth_normals();
-    let material = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
         0.5,
     )))));
-    objs.push(Arc::new(BvhNode::new(
-        teapot.to_triangles(material),
+    let glass = Arc::new(Glass::new(2.2, 0.0));
+    let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
+        .unwrap()
+        .groups[0];
+    teapot.set_smooth_normals();
+    let teapot_hitable = Arc::new(BvhNode::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
+    let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
+        .unwrap()
+        .groups[0];
+    bunny.set_smooth_normals();
+    let bunny_hitable = Arc::new(Transform::new(
+        Arc::new(Transform::new(
+            Arc::new(BvhNode::new(bunny.to_triangles(glass.clone()), 0.0, 1.0)),
+            &Affine::translate(
+                &(Vec3::new(1.0 / 20.0, 0.0, 0.0) + Vec3::new(-1.0 / 20.0, 0.0, -1.0 / 20.0)),
+            ),
+            0.0,
+            1.0,
+        )),
+        &Affine::scale(22.0, &Vec3::new(0.0, 0.0, 0.0)),
         0.0,
         1.0,
-        &mut SeedableRng::from_seed([0; 32]),
-    )));
-    // objs.push(Triangle::boxed(
-    //     &Vec3::new(0.0, 1.0, 0.0),
-    //     &Vec3::new(1.0, 1.0, 0.0),
-    //     &Vec3::new(1.0, 2.0, 1.0),
-    //     Lambertian::boxed(ConstantTexture::boxed(&Vec3::new(0.0, 0.0, 0.0))),
-    // ));
+    ));
+    objs.push(teapot_hitable);
+    // objs.push(bunny_hitable);
     let objs = Arc::new(HitableList::new(objs));
     let look_from = Vec3::new(-5.0, 6.0, -5.0);
     let look_at = Vec3::new(0.0, 1.0, 0.0);
