@@ -43,7 +43,7 @@ impl ColorSum {
             for j in 0..self.ny {
                 let idx: usize = i as usize + j as usize * self.nx as usize;
                 let mut col = self.sum[idx];
-                col /= self.count as f64;
+                col /= self.count as f32;
                 buffer[idx * 4 + 0] = (255.99 * col[0].min(1.0).max(0.0)) as u8;
                 buffer[idx * 4 + 1] = (255.99 * col[1].min(1.0).max(0.0)) as u8;
                 buffer[idx * 4 + 2] = (255.99 * col[2].min(1.0).max(0.0)) as u8;
@@ -85,8 +85,8 @@ fn trace_rays(
     for _ in 0..ns {
         for i in 0..nx {
             for j in 0..ny {
-                let u = (i as f64 + rng.gen::<f64>()) / nx as f64;
-                let v = (j as f64 + rng.gen::<f64>()) / ny as f64;
+                let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
+                let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
                 let ray = scene.camera.get_ray(u, v, &mut rng);
                 let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */);
                 let idx = (i + (ny - j - 1) * nx) as usize;
@@ -103,12 +103,12 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 64;
-    const IMAGE_HEIGHT: i32 = 64;
-    let aspect = IMAGE_WIDTH as f64 / IMAGE_HEIGHT as f64;
-    const RAYS_PER_PIXEL: i32 = 100;
+    const IMAGE_WIDTH: i32 = 200;
+    const IMAGE_HEIGHT: i32 = 200;
+    let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
+    const RAYS_PER_PIXEL: i32 = 1000;
     const THREAD_CNT: i32 = 4;
-    const REPORT_INTERVAL: i32 = 4;
+    const REPORT_INTERVAL: i32 = 100;
     const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(
@@ -129,9 +129,9 @@ fn main() {
         println!("REPORT_INTERVAL must divide THREAD_CNT.");
         std::process::exit(1);
     }
-    // let scene = scenes::get(ScenesType::CornellBox, aspect);
-    // let scene = scenes::get(ScenesType::ManySpheres, aspect);
-    let scene = scenes::get(ScenesType::Teapot, aspect);
+    let scene = scenes::get(ScenesType::CornellBox, aspect);
+    let scene = scenes::get(ScenesType::ManySpheres, aspect);
+    // let scene = scenes::get(ScenesType::Teapot, aspect);
     println!(
         "Scene constructed. ({:.3} secs elapsed)",
         duration_to_secs(&start_time.elapsed())
@@ -196,6 +196,6 @@ fn get_output_dir_if_exists(path: &Path) -> Option<&Path> {
     })
 }
 
-fn duration_to_secs(dur: &Duration) -> f64 {
-    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 0.001
+fn duration_to_secs(dur: &Duration) -> f32 {
+    dur.as_secs() as f32 + dur.subsec_millis() as f32 * 0.001
 }

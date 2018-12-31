@@ -19,7 +19,7 @@ use ray::texture::checker::CheckerTexture;
 use ray::texture::constant::ConstantTexture;
 use std::sync::Arc;
 
-pub fn scene(aspect_ratio: f64) -> Scene {
+pub fn scene(aspect_ratio: f32) -> Scene {
     let mut objs = Vec::<Arc<Hitable>>::new();
     let mut importance = Vec::<Arc<Hitable>>::new();
     objs.push(Arc::new(Rectangle::new(

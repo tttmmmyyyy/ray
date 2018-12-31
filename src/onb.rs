@@ -34,7 +34,7 @@ impl Onb {
     pub fn local_to_global_vec(&self, uvw: &Vec3) -> Vec3 {
         uvw[0] * self.u() + uvw[1] * self.v() + uvw[2] * self.w()
     }
-    pub fn local_to_global_coords(&self, u: f64, v: f64, w: f64) -> Vec3 {
+    pub fn local_to_global_coords(&self, u: f32, v: f32, w: f32) -> Vec3 {
         u * self.u() + v * self.v() + w * self.w()
     }
 }

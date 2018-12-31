@@ -17,7 +17,7 @@ impl<'a> HitablePdf<'a> {
 }
 
 impl<'a> Pdf for HitablePdf<'a> {
-    fn density(&self, dir: &Vec3) -> f64 {
+    fn density(&self, dir: &Vec3) -> f32 {
         self.hitable.direction_density(&self.origin, &dir)
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {

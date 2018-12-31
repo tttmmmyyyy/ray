@@ -18,11 +18,11 @@ use ray::scene::Scene;
 use ray::texture::constant::ConstantTexture;
 use std::sync::Arc;
 
-pub fn scene(aspect_ratio: f64) -> Scene {
+pub fn scene(aspect_ratio: f32) -> Scene {
     let seed: [u8; 32] = [3; 32];
     let mut rng: StdRng = SeedableRng::from_seed(seed);
     let mut objs = Vec::<Arc<Hitable>>::new();
-    const L: f64 = 10.0;
+    const L: f32 = 10.0;
     objs.push(Arc::new(Rectangle::new(
         &Vec3::new(-L, 0.0, -L),
         &Vec3::new(0.0, 0.0, 2.0 * L),
@@ -60,21 +60,21 @@ pub fn scene(aspect_ratio: f64) -> Scene {
     for a in -10..10 {
         for b in -10..10 {
             let center = Vec3::new(
-                a as f64 + 0.9 * rng.gen::<f64>(),
+                a as f32 + 0.9 * rng.gen::<f32>(),
                 0.2,
-                b as f64 + 0.9 * rng.gen::<f64>(),
+                b as f32 + 0.9 * rng.gen::<f32>(),
             );
             let c = Vec3::new(4.0, 2.0, 0.0);
             if (center - c).norm() > 0.9 {
-                let mat_rnd = rng.gen::<f64>();
+                let mat_rnd = rng.gen::<f32>();
                 if mat_rnd < 0.8 {
                     small_spheres.push(Arc::new(Sphere::new(
                         &center,
                         0.2,
                         Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
-                            rng.gen::<f64>() * rng.gen::<f64>(),
-                            rng.gen::<f64>() * rng.gen::<f64>(),
-                            rng.gen::<f64>() * rng.gen::<f64>(),
+                            rng.gen::<f32>() * rng.gen::<f32>(),
+                            rng.gen::<f32>() * rng.gen::<f32>(),
+                            rng.gen::<f32>() * rng.gen::<f32>(),
                         ))))),
                     )));
                 } else if mat_rnd < 0.9 {
@@ -83,18 +83,18 @@ pub fn scene(aspect_ratio: f64) -> Scene {
                         0.2,
                         Arc::new(Metal::new(
                             &Vec3::new(
-                                0.5 * (1.0 + rng.gen::<f64>()),
-                                0.5 * (1.0 + rng.gen::<f64>()),
-                                0.5 * (1.0 + rng.gen::<f64>()),
+                                0.5 * (1.0 + rng.gen::<f32>()),
+                                0.5 * (1.0 + rng.gen::<f32>()),
+                                0.5 * (1.0 + rng.gen::<f32>()),
                             ),
-                            0.5 * rng.gen::<f64>(),
+                            0.5 * rng.gen::<f32>(),
                         )),
                     )));
                 } else {
                     small_spheres.push(Arc::new(Sphere::new(
                         &center,
                         0.2,
-                        Arc::new(Glass::new(1.33 * 1.1 * rng.gen::<f64>(), 0.0)),
+                        Arc::new(Glass::new(1.33 * 1.1 * rng.gen::<f32>(), 0.0)),
                     )));
                 }
             }

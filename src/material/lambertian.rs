@@ -6,7 +6,7 @@ use crate::pdf::SingularPdf;
 use crate::ray::Ray;
 use crate::scatter_record::ScatterRecord;
 use crate::texture::Texture;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 use std::sync::Arc;
 
 pub struct Lambertian {
@@ -28,7 +28,7 @@ impl Material for Lambertian {
             },
         })
     }
-    fn scattering_pdf(&self, _ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f64 {
+    fn scattering_pdf(&self, _ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32 {
         let cosine = rec.normal.dot(&scattered.direction.normalize());
         (cosine / PI).max(0.0)
     }

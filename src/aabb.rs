@@ -21,24 +21,24 @@ impl Aabb {
     }
     pub fn empty() -> Self {
         Aabb::new(
-            &Vec3::new(std::f64::INFINITY, std::f64::INFINITY, std::f64::INFINITY),
+            &Vec3::new(std::f32::INFINITY, std::f32::INFINITY, std::f32::INFINITY),
             &Vec3::new(
-                std::f64::NEG_INFINITY,
-                std::f64::NEG_INFINITY,
-                std::f64::NEG_INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::NEG_INFINITY,
+                std::f32::NEG_INFINITY,
             ),
         )
     }
     pub fn is_empty(&self) -> bool {
-        self.min == Vec3::new(std::f64::INFINITY, std::f64::INFINITY, std::f64::INFINITY)
+        self.min == Vec3::new(std::f32::INFINITY, std::f32::INFINITY, std::f32::INFINITY)
             && self.max
                 == Vec3::new(
-                    std::f64::NEG_INFINITY,
-                    std::f64::NEG_INFINITY,
-                    std::f64::NEG_INFINITY,
+                    std::f32::NEG_INFINITY,
+                    std::f32::NEG_INFINITY,
+                    std::f32::NEG_INFINITY,
                 )
     }
-    pub fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> bool {
+    pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> bool {
         let mut t_min_int = t_min; // int = intersection
         let mut t_max_int = t_max;
         for a in 0..3 {
@@ -48,8 +48,8 @@ impl Aabb {
             if inv_d < 0.0 {
                 std::mem::swap(&mut t0, &mut t1);
             }
-            t_min_int = f64::max(t_min_int, t0);
-            t_max_int = f64::min(t_max_int, t1);
+            t_min_int = f32::max(t_min_int, t0);
+            t_max_int = f32::min(t_max_int, t1);
             if t_min_int > t_max_int {
                 // 厚さ0のAAbbとはヒットする
                 return false;
@@ -95,7 +95,7 @@ impl Aabb {
             })
             .collect()
     }
-    pub fn area(&self) -> f64 {
+    pub fn area(&self) -> f32 {
         if self.is_empty() {
             return 0.0;
         }
@@ -105,8 +105,8 @@ impl Aabb {
     }
     pub fn compare_center(&self, rhs: &Aabb, axis: usize) -> std::cmp::Ordering {
         debug_assert!(!self.is_empty() && !rhs.is_empty());
-        let lhs_center: f64 = 0.5 * (self.min + self.max)[axis as usize];
-        let rhs_center: f64 = 0.5 * (rhs.min + rhs.max)[axis as usize];
+        let lhs_center: f32 = 0.5 * (self.min + self.max)[axis as usize];
+        let rhs_center: f32 = 0.5 * (rhs.min + rhs.max)[axis as usize];
         lhs_center
             .partial_cmp(&rhs_center)
             .unwrap_or(std::cmp::Ordering::Equal)

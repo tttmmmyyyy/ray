@@ -12,10 +12,10 @@ impl Empty {
 }
 
 impl Hitable for Empty {
-    fn hit(&self, _ray: &Ray, _t_min: f64, _t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, _ray: &Ray, _t_min: f32, _t_max: f32) -> Option<HitRecord> {
         None
     }
-    fn bounding_box(&self, _time_0: f64, _time_1: f64) -> Option<Aabb> {
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
         Some(Aabb::empty())
     }
 }

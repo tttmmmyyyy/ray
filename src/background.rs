@@ -42,14 +42,14 @@ impl Background for AmbientLight {
 }
 
 pub struct WeightedBg {
-    a_weight: f64,
-    b_weight: f64,
+    a_weight: f32,
+    b_weight: f32,
     a: Box<Background>,
     b: Box<Background>,
 }
 
 impl WeightedBg {
-    pub fn new(a_weight: f64, a: Box<Background>, b_weight: f64, b: Box<Background>) -> Self {
+    pub fn new(a_weight: f32, a: Box<Background>, b_weight: f32, b: Box<Background>) -> Self {
         Self {
             a_weight,
             a,

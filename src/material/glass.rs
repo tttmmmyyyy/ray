@@ -11,24 +11,24 @@ pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
     v - 2.0 * v.dot(&n) * n
 }
 
-pub fn refract(v: &Vec3, n: &Vec3, r: f64) -> Option<Vec3> {
+pub fn refract(v: &Vec3, n: &Vec3, r: f32) -> Option<Vec3> {
     let uv = v.normalize();
     let dt = uv.dot(n);
     let d = 1.0 - r * r * (1.0 - dt * dt);
     if d > 0.0 {
-        Some(r * (uv - n * dt) - n * f64::sqrt(d))
+        Some(r * (uv - n * dt) - n * f32::sqrt(d))
     } else {
         None
     }
 }
 
 pub struct Glass {
-    pub ref_idx: f64,
-    pub fuziness: f64,
+    pub ref_idx: f32,
+    pub fuziness: f32,
 }
 
 impl Glass {
-    pub fn new(ref_idx: f64, fuziness: f64) -> Self {
+    pub fn new(ref_idx: f32, fuziness: f32) -> Self {
         Glass {
             ref_idx: ref_idx,
             fuziness: fuziness,
@@ -37,9 +37,9 @@ impl Glass {
 }
 
 /// Approximation formula of probability of reflection when a light enter into a material
-pub fn schlick_formula(cosine: f64, ref_idx: f64) -> f64 {
+pub fn schlick_formula(cosine: f32, ref_idx: f32) -> f32 {
     let r0 = ((1.0 - ref_idx) / (1.0 + ref_idx)).powf(2.0);
-    r0 + (1.0 - r0) * f64::powf(1.0 - cosine, 5.0)
+    r0 + (1.0 - r0) * f32::powf(1.0 - cosine, 5.0)
 }
 
 impl Material for Glass {
@@ -62,7 +62,7 @@ impl Material for Glass {
             )
         };
         let op_refracted = refract(&ray.direction, &n, r);
-        if op_refracted.is_some() && rng.gen::<f64>() > schlick_formula(c, r) {
+        if op_refracted.is_some() && rng.gen::<f32>() > schlick_formula(c, r) {
             let mut refracted = op_refracted.unwrap();
             if self.fuziness > 0.0 {
                 refracted = refracted.normalize();
@@ -84,7 +84,7 @@ impl Material for Glass {
             })
         }
     }
-    fn scattering_pdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord) -> f64 {
+    fn scattering_pdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord) -> f32 {
         panic!("scattering_pdf called for Glass")
     }
 }

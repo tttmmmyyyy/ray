@@ -35,16 +35,16 @@ impl ImageTexture {
 
 impl Texture for ImageTexture {
     fn value(&self, uv: &Vec2, _p: &Vec3) -> Vec3 {
-        let i = ((uv[0] * (self.width as f64)) as usize)
+        let i = ((uv[0] * (self.width as f32)) as usize)
             .min(self.width - 1)
             .max(0);
-        let j = ((uv[1] * (self.height as f64)) as usize)
+        let j = ((uv[1] * (self.height as f32)) as usize)
             .min(self.height - 1)
             .max(0);
         let mut col = Vec3::new(0.0, 0.0, 0.0);
         // ToDo: implement linear (or trilinear) interpolated sampling
         for c in 0..3 {
-            col[c] = self.data[3 * (i + j * self.width) + c] as f64 / 255.0;
+            col[c] = self.data[3 * (i + j * self.width) + c] as f32 / 255.0;
         }
         col
     }

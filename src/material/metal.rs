@@ -8,11 +8,11 @@ use crate::scatter_record::ScatterRecord;
 
 pub struct Metal {
     pub albedo: Vec3,
-    pub fuzziness: f64,
+    pub fuzziness: f32,
 }
 
 impl Metal {
-    pub fn new(albedo: &Vec3, fuzziness: f64) -> Self {
+    pub fn new(albedo: &Vec3, fuzziness: f32) -> Self {
         Metal {
             albedo: *albedo,
             fuzziness: fuzziness,
@@ -37,7 +37,7 @@ impl Material for Metal {
             important_dir: SingularPdf::Delta { dir: reflected },
         })
     }
-    fn scattering_pdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord) -> f64 {
+    fn scattering_pdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord) -> f32 {
         panic!("scattering_pdf called for Metal.")
     }
 }

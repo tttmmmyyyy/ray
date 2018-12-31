@@ -4,7 +4,7 @@ use crate::material::Material;
 
 #[derive(Clone, Copy)]
 pub struct HitRecord<'a> {
-    pub t: f64,
+    pub t: f32,
     pub point: Vec3,
     pub tex_coord: Vec2,
     pub normal: Vec3,

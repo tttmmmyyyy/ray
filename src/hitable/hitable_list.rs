@@ -17,7 +17,7 @@ impl HitableList {
 }
 
 impl Hitable for HitableList {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut res: Option<HitRecord> = None;
         let mut closest_so_far = t_max;
         for obj in &self.list {
@@ -28,7 +28,7 @@ impl Hitable for HitableList {
         }
         return res;
     }
-    fn bounding_box(&self, time_0: f64, time_1: f64) -> Option<Aabb> {
+    fn bounding_box(&self, time_0: f32, time_1: f32) -> Option<Aabb> {
         if self.list.len() == 0 {
             return Some(Aabb::empty());
         }
@@ -43,14 +43,14 @@ impl Hitable for HitableList {
         return Some(cur);
     }
     fn random_direction_from(&self, origin: &Vec3, rng: &mut RandGen) -> Vec3 {
-        let idx = (rng.gen::<f64>() * self.list.len() as f64) as usize;
+        let idx = (rng.gen::<f32>() * self.list.len() as f32) as usize;
         self.list[idx].random_direction_from(origin, rng)
     }
-    fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f64 {
-        let sum: f64 = (&(*self.list))
+    fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f32 {
+        let sum: f32 = (&(*self.list))
             .into_iter()
             .map(|o| o.direction_density(origin, dir))
             .sum();
-        sum / self.list.len() as f64
+        sum / self.list.len() as f32
     }
 }

@@ -1,11 +1,11 @@
+pub mod constant;
 pub mod cosine;
 pub mod hitable;
 pub mod mixture;
-pub mod constant;
 
 use crate::aliases::{RandGen, Vec2, Vec3};
 use rand::Rng;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 /// A probability distribution function on directions which can be a delta distribution.
 pub enum SingularPdf {
@@ -17,7 +17,7 @@ pub enum SingularPdf {
 pub trait Pdf {
     /// Probability density at a direction.
     /// dir is not required to be normalized
-    fn density(&self, dir: &Vec3) -> f64;
+    fn density(&self, dir: &Vec3) -> f32;
     /// Generates a radom direction following this pdf.
     fn generate(&self, rng: &mut RandGen) -> Vec3;
 }
@@ -27,9 +27,9 @@ pub trait Pdf {
 pub fn rnd_in_unit_sphere(rng: &mut RandGen) -> Vec3 {
     loop {
         let p = Vec3::new(
-            2.0 * rng.gen::<f64>() - 1.0,
-            2.0 * rng.gen::<f64>() - 1.0,
-            2.0 * rng.gen::<f64>() - 1.0,
+            2.0 * rng.gen::<f32>() - 1.0,
+            2.0 * rng.gen::<f32>() - 1.0,
+            2.0 * rng.gen::<f32>() - 1.0,
         );
         if p.norm() < 1.0 {
             return p;
@@ -41,8 +41,8 @@ pub fn rnd_in_unit_sphere(rng: &mut RandGen) -> Vec3 {
 pub fn rnd_in_unit_disc(rnd_in_unit_disc: &mut RandGen) -> Vec2 {
     loop {
         let p = Vec2::new(
-            2.0 * rnd_in_unit_disc.gen::<f64>() - 1.0,
-            2.0 * rnd_in_unit_disc.gen::<f64>() - 1.0,
+            2.0 * rnd_in_unit_disc.gen::<f32>() - 1.0,
+            2.0 * rnd_in_unit_disc.gen::<f32>() - 1.0,
         );
         if p.norm() < 1.0 {
             return p;
@@ -53,9 +53,9 @@ pub fn rnd_in_unit_disc(rnd_in_unit_disc: &mut RandGen) -> Vec2 {
 /// Calculates a random point on a unit hemisphere (x^2+y^2+z^2=1, z>=0)
 /// such that pdf(d)/sin(t) ~= cos(t) where t is angle between d and n=(0,0,1)
 pub fn random_cosine_direction(rng: &mut RandGen) -> Vec3 {
-    let r0 = rng.gen::<f64>();
+    let r0 = rng.gen::<f32>();
     let rr0 = r0.sqrt();
-    let r1 = rng.gen::<f64>();
+    let r1 = rng.gen::<f32>();
     let angle = 2.0 * PI * r1;
     let z = (1.0 - r0).sqrt();
     let x = angle.cos() * rr0;
@@ -64,9 +64,9 @@ pub fn random_cosine_direction(rng: &mut RandGen) -> Vec3 {
 }
 
 /// Generate uniformly a random (normalized) direction vector in a cone
-pub fn random_in_cone(cos_half_angle: f64, rng: &mut RandGen) -> Vec3 {
-    let r1 = rng.gen::<f64>();
-    let r2 = rng.gen::<f64>();
+pub fn random_in_cone(cos_half_angle: f32, rng: &mut RandGen) -> Vec3 {
+    let r1 = rng.gen::<f32>();
+    let r2 = rng.gen::<f32>();
     let z = 1.0 + r1 * (cos_half_angle - 1.0);
     let sine = (1.0 - z.powf(2.0)).sqrt();
     let phi = 2.0 * PI * r2;

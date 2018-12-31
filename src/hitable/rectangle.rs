@@ -19,7 +19,7 @@ pub struct Rectangle {
     normal: Vec3,
     material: Arc<Material>,
     // a small positive to inflate the bounding_box()
-    bdb_margin: f64,
+    bdb_margin: f32,
 }
 
 impl Rectangle {
@@ -28,7 +28,7 @@ impl Rectangle {
         edge_0: &Vec3,
         edge_1: &Vec3,
         material: Arc<Material>,
-        bdb_margin: f64,
+        bdb_margin: f32,
     ) -> Self {
         Rectangle {
             origin: *origin,
@@ -42,7 +42,7 @@ impl Rectangle {
 }
 
 impl Hitable for Rectangle {
-    fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f64, t_max: f64) -> Option<HitRecord<'s>> {
+    fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'s>> {
         let denom = ray.direction.dot(&self.normal);
         if denom == 0.0 {
             return None;
@@ -67,7 +67,7 @@ impl Hitable for Rectangle {
             None
         }
     }
-    fn bounding_box(&self, _time_0: f64, _time_1: f64) -> Option<Aabb> {
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
         let p0 = self.origin;
         let p1 = self.origin + self.edge_0;
         let p2 = self.origin + self.edge_1;
@@ -78,13 +78,13 @@ impl Hitable for Rectangle {
         Some(Aabb::new(&mn, &mx))
     }
     fn random_direction_from(&self, origin: &Vec3, rng: &mut RandGen) -> Vec3 {
-        self.origin + rng.gen::<f64>() * self.edge_0 + rng.gen::<f64>() * self.edge_1 - origin
+        self.origin + rng.gen::<f32>() * self.edge_0 + rng.gen::<f32>() * self.edge_1 - origin
     }
-    fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f64 {
+    fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f32 {
         if let Some(ref rec) = self.hit(
             &Ray::new(origin, &dir, 0.0),
             0.0, /* Note: or 0.001? */
-            std::f64::MAX,
+            std::f32::MAX,
         ) {
             let area = self.edge_0.cross(&self.edge_1).norm();
             let dist_squared = (rec.point - origin).norm_squared();

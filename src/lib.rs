@@ -24,7 +24,7 @@ use crate::scene::Scene;
 
 fn mix_importance_hitable_pdf<'m, 's, 'p>(
     material_pdf: &'m dyn Pdf,
-    weight_imp_hit_pdf: &'s Option<(f64, HitablePdf)>,
+    weight_imp_hit_pdf: &'s Option<(f32, HitablePdf)>,
 ) -> MixturePdf<'s, 'm> {
     match weight_imp_hit_pdf {
         Some((weight, imp_hit_pdf)) => {
@@ -38,7 +38,7 @@ fn mix_importance_hitable_pdf<'m, 's, 'p>(
 fn create_importance_hitable_pdf<'s>(
     scene: &'s Scene,
     hit_pt: &Vec3,
-) -> Option<(f64, HitablePdf<'s>)> {
+) -> Option<(f32, HitablePdf<'s>)> {
     if scene.importance_weight > 0.0 {
         Some((
             scene.importance_weight,
@@ -50,7 +50,7 @@ fn create_importance_hitable_pdf<'s>(
 }
 
 pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Vec3 {
-    if let Some(ref rec) = scene.hitables.hit(&ray, 0.0001, std::f64::MAX) {
+    if let Some(ref rec) = scene.hitables.hit(&ray, 0.0001, std::f32::MAX) {
         let emitted = rec.material.emitted(ray, rec);
         let opt_s_rec = rec.material.scatter(ray, rec, rng);
         if depth > 0 && opt_s_rec.is_some() {

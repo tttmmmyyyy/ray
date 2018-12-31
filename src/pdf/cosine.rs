@@ -2,7 +2,7 @@ use crate::aliases::{RandGen, Vec3};
 use crate::onb::Onb;
 use crate::pdf::random_cosine_direction;
 use crate::pdf::Pdf;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 
 /// Pdf such that pdf(d)/sin(t) ~= max(cos(t), 0) in a specified local coordinate (u,v,w)
 pub struct CosinePdf(Onb);
@@ -19,7 +19,7 @@ impl CosinePdf {
 }
 
 impl Pdf for CosinePdf {
-    fn density(&self, dir: &Vec3) -> f64 {
+    fn density(&self, dir: &Vec3) -> f32 {
         let cosine = dir.normalize().dot(self.0.w());
         (cosine / PI).max(0.0) // since integral of cos(theta) on a unit hemisphere = pi.
     }

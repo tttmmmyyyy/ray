@@ -21,9 +21,9 @@ use ray::texture::constant::ConstantTexture;
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn scene(aspect_ratio: f64) -> Scene {
+pub fn scene(aspect_ratio: f32) -> Scene {
     let mut objs = Vec::<Arc<Hitable>>::new();
-    const L: f64 = 20.0;
+    const L: f32 = 20.0;
     objs.push(Arc::new(Rectangle::new(
         &Vec3::new(-L, -0.01, -L),
         &Vec3::new(0.0, -0.01, 2.0 * L),
@@ -53,26 +53,26 @@ pub fn scene(aspect_ratio: f64) -> Scene {
         .unwrap()
         .groups[0];
     teapot.set_smooth_normals();
-    let teapot_hitable = Arc::new(BvhNode::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
-    let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
-        .unwrap()
-        .groups[0];
-    bunny.set_smooth_normals();
-    let bunny_hitable = Arc::new(Transform::new(
-        Arc::new(Transform::new(
-            Arc::new(BvhNode::new(bunny.to_triangles(glass.clone()), 0.0, 1.0)),
-            &Affine::translate(
-                &(Vec3::new(1.0 / 20.0, 0.0, 0.0) + Vec3::new(-1.0 / 20.0, 0.0, -1.0 / 20.0)),
-            ),
-            0.0,
-            1.0,
-        )),
-        &Affine::scale(22.0, &Vec3::new(0.0, 0.0, 0.0)),
-        0.0,
-        1.0,
-    ));
-    objs.push(teapot_hitable);
-    // objs.push(bunny_hitable);
+    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
+    // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
+    //     .unwrap()
+    //     .groups[0];
+    // bunny.set_smooth_normals();
+    // let bunny = Arc::new(Transform::new(
+    //     Arc::new(Transform::new(
+    //         Arc::new(BvhNode::new(bunny.to_triangles(glass.clone()), 0.0, 1.0)),
+    //         &Affine::translate(
+    //             &(Vec3::new(1.0 / 20.0, 0.0, 0.0) + Vec3::new(-1.0 / 20.0, 0.0, -1.0 / 20.0)),
+    //         ),
+    //         0.0,
+    //         1.0,
+    //     )),
+    //     &Affine::scale(22.0, &Vec3::new(0.0, 0.0, 0.0)),
+    //     0.0,
+    //     1.0,
+    // ));
+    objs.push(teapot);
+    // objs.push(bunny);
     let objs = Arc::new(HitableList::new(objs));
     let look_from = Vec3::new(-5.0, 6.0, -5.0);
     let look_at = Vec3::new(0.0, 1.0, 0.0);

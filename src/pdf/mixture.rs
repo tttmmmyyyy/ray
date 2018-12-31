@@ -3,13 +3,13 @@ use crate::pdf::Pdf;
 use rand::Rng;
 
 pub struct MixturePdf<'a, 'b> {
-    mix: f64,
+    mix: f32,
     a_pdf: Option<&'a Pdf>,
     b_pdf: &'b Pdf, // None when mix == 0.0
 }
 
 impl<'a, 'b> MixturePdf<'a, 'b> {
-    pub fn new(mix: f64, a_pdf: &'a Pdf, b_pdf: &'b Pdf) -> Self {
+    pub fn new(mix: f32, a_pdf: &'a Pdf, b_pdf: &'b Pdf) -> Self {
         debug_assert!(0.0 <= mix && mix <= 1.0);
         if mix == 0.0 {
             Self::zero(b_pdf)
@@ -31,7 +31,7 @@ impl<'a, 'b> MixturePdf<'a, 'b> {
 }
 
 impl<'a, 'b> Pdf for MixturePdf<'a, 'b> {
-    fn density(&self, dir: &Vec3) -> f64 {
+    fn density(&self, dir: &Vec3) -> f32 {
         match self.a_pdf {
             Some(a_pdf) => {
                 self.mix * a_pdf.density(dir) + (1.0 - self.mix) * self.b_pdf.density(dir)
@@ -42,7 +42,7 @@ impl<'a, 'b> Pdf for MixturePdf<'a, 'b> {
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
         match self.a_pdf {
             Some(a_pdf) => {
-                if rng.gen::<f64>() < self.mix {
+                if rng.gen::<f32>() < self.mix {
                     a_pdf.generate(rng)
                 } else {
                     self.b_pdf.generate(rng)

@@ -6,7 +6,7 @@ use crate::hitable::triangle::Triangle;
 use crate::hitable::Hitable;
 use crate::material::Material;
 use std::collections::VecDeque;
-use std::f64;
+use std::f32;
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
@@ -210,9 +210,9 @@ impl ObjGroup {
             Err(Error::Parse(format!("Invalid line:\n{}.", line)))
         } else {
             Ok(Vec3::new(
-                f64::from_str(columns[1])?,
-                f64::from_str(columns[2])?,
-                f64::from_str(columns[3])?,
+                f32::from_str(columns[1])?,
+                f32::from_str(columns[2])?,
+                f32::from_str(columns[3])?,
             ))
         }
     }
@@ -222,8 +222,8 @@ impl ObjGroup {
             Err(Error::Parse(format!("Invalid line:\n{}.", line)))
         } else {
             Ok(Vec2::new(
-                f64::from_str(columns[1])?,
-                f64::from_str(columns[2])?,
+                f32::from_str(columns[1])?,
+                f32::from_str(columns[2])?,
             ))
         }
     }
@@ -323,7 +323,7 @@ impl ObjGroup {
                 if vecs.len() == 0 {
                     Vec3::new(0.0, 0.0, 0.0)
                 } else {
-                    (vecs.iter().sum::<Vec3>() / vecs.len() as f64).normalize()
+                    (vecs.iter().sum::<Vec3>() / vecs.len() as f32).normalize()
                 }
             })
             .collect();

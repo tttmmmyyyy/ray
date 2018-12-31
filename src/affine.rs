@@ -7,7 +7,7 @@ pub struct Affine {
     a: Mat3,
     b: Vec3,
     a_inv: Mat3, // the inverce matrix of a
-    a_det: f64,  // the deteminant of a
+    a_det: f32,  // the deteminant of a
 }
 
 impl Affine {
@@ -30,7 +30,7 @@ impl Affine {
         Affine::new(linear, &(-linear * origin + origin))
     }
     /// Isotropic scaling
-    pub fn scale(scaling: f64, origin: &Vec3) -> Self {
+    pub fn scale(scaling: f32, origin: &Vec3) -> Self {
         Affine::scale_axis(&Vec3::new(scaling, scaling, scaling), origin)
     }
     fn scale_axis(scaling: &Vec3, origin: &Vec3) -> Self {

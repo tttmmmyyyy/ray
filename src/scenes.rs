@@ -11,10 +11,10 @@ pub enum ScenesType {
     Teapot,
 }
 
-pub fn get(scene_type: ScenesType, aspect_ratio: f64) -> Scene {
+pub fn get(scene_type: ScenesType, aspect_ratio: f32) -> Scene {
     match scene_type {
         ScenesType::CornellBox => self::cornellbox::scene(aspect_ratio),
         ScenesType::ManySpheres => self::manyspheres::scene(aspect_ratio),
-        ScenesType::Teapot => self::teapot::scene(aspect_ratio)
+        ScenesType::Teapot => self::teapot::scene(aspect_ratio),
     }
 }

@@ -26,7 +26,7 @@ impl Perlin {
             res[i] = i as u8;
         }
         for i in (1..256).rev() {
-            let j = (rng.gen::<f64>() * ((i + 1) as f64)) as usize;
+            let j = (rng.gen::<f32>() * ((i + 1) as f32)) as usize;
             res.swap(i as usize, j);
         }
         res
@@ -39,7 +39,7 @@ impl Perlin {
         }
         res
     }
-    pub fn perlin_interpolate(c: &[[[Vec3; 2]; 2]; 2], point: &Vec3) -> f64 {
+    pub fn perlin_interpolate(c: &[[[Vec3; 2]; 2]; 2], point: &Vec3) -> f32 {
         let mut herm_cubic = Vec3::new(0.0, 0.0, 0.0);
         for i in 0..3 {
             herm_cubic[i] = point[i] * point[i] * (3.0 - 2.0 * point[i]);
@@ -48,11 +48,11 @@ impl Perlin {
         for i in 0..2 {
             for j in 0..2 {
                 for k in 0..2 {
-                    let ivec = Vec3::new(i as f64, j as f64, k as f64);
+                    let ivec = Vec3::new(i as f32, j as f32, k as f32);
                     let weight = point - ivec;
-                    accum += (i as f64 * herm_cubic[0] + (1 - i) as f64 * (1.0 - herm_cubic[0]))
-                        * (j as f64 * herm_cubic[1] + (1 - j) as f64 * (1.0 - herm_cubic[1]))
-                        * (k as f64 * herm_cubic[2] + (1 - k) as f64 * (1.0 - herm_cubic[2]))
+                    accum += (i as f32 * herm_cubic[0] + (1 - i) as f32 * (1.0 - herm_cubic[0]))
+                        * (j as f32 * herm_cubic[1] + (1 - j) as f32 * (1.0 - herm_cubic[1]))
+                        * (k as f32 * herm_cubic[2] + (1 - k) as f32 * (1.0 - herm_cubic[2]))
                         * c[i][j][k].dot(&weight);
                 }
             }
@@ -60,7 +60,7 @@ impl Perlin {
         accum
     }
     /// returns values in [-1,1]
-    pub fn noise(&self, p: &Vec3) -> f64 {
+    pub fn noise(&self, p: &Vec3) -> f32 {
         let mut fract = Vec3::new(0.0, 0.0, 0.0);
         for i in 0..3 {
             fract[i] = p[i] - p[i].floor();
@@ -81,7 +81,7 @@ impl Perlin {
         }
         Self::perlin_interpolate(&c, &fract) // [-1, 1]
     }
-    pub fn turb(&self, p: &Vec3) -> f64 {
+    pub fn turb(&self, p: &Vec3) -> f32 {
         const DEPTH: usize = 7;
         let mut accum = 0.0;
         let mut p_m = *p;
@@ -97,11 +97,11 @@ impl Perlin {
 
 pub struct NoiseTexture {
     perlin: Arc<Perlin>, // change to arc
-    scale: f64,
+    scale: f32,
 }
 
 impl NoiseTexture {
-    pub fn new(scale: f64, rng: &mut RandGen) -> Self {
+    pub fn new(scale: f32, rng: &mut RandGen) -> Self {
         NoiseTexture {
             perlin: Arc::new(Perlin::new(rng)),
             scale: scale,
@@ -113,6 +113,6 @@ impl Texture for NoiseTexture {
     fn value(&self, _uv: &Vec2, p: &Vec3) -> Vec3 {
         Vec3::new(1.0, 1.0, 1.0)
             * 0.5
-            * (1.0 + f64::sin(self.scale * p[2] + 10.0 * self.perlin.turb(p)))
+            * (1.0 + f32::sin(self.scale * p[2] + 10.0 * self.perlin.turb(p)))
     }
 }
