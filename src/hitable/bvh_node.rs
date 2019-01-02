@@ -6,12 +6,54 @@ use crate::hitable::Hitable;
 use crate::ray::Ray;
 use std::sync::Arc;
 
+/// Only used in OBVH::from_bvh_node.
+#[derive(Clone)]
+pub enum BvhNodeConstructionRecord {
+    Inner { ptr: Arc<BvhNode>, bbox: Aabb },
+    Leaf { ptr: Arc<dyn Hitable>, bbox: Aabb }, // must not empty
+}
+
+impl Default for BvhNodeConstructionRecord {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
+impl BvhNodeConstructionRecord {
+    pub fn empty() -> Self {
+        BvhNodeConstructionRecord::Leaf {
+            ptr: Arc::new(Empty::new()),
+            bbox: Aabb::empty(),
+        }
+    }
+    pub fn leaf(ptr: Arc<Hitable>, time_0: f32, time_1: f32) -> Self {
+        BvhNodeConstructionRecord::Leaf {
+            bbox: ptr.bounding_box(time_0, time_1).unwrap(),
+            ptr: ptr,
+        }
+    }
+    pub fn inner(ptr: Arc<BvhNode>) -> Self {
+        BvhNodeConstructionRecord::Inner {
+            bbox: ptr.aabb,
+            ptr: ptr,
+        }
+    }
+    pub fn bbox(&self) -> Aabb {
+        match self {
+            BvhNodeConstructionRecord::Inner { ptr: _, bbox: bbox } => *bbox,
+            BvhNodeConstructionRecord::Leaf { ptr: _, bbox: bbox } => *bbox,
+        }
+    }
+}
+
 /// Bouding Volume Hierarchy node
 pub struct BvhNode {
-    left: Arc<Hitable>,
-    right: Arc<Hitable>,
-    axis: usize, // the index (0,1,2) of splitting plane
-    aabb: Aabb,
+    pub left: Arc<Hitable>,
+    pub right: Arc<Hitable>,
+    pub axis: usize, // the index (0,1,2) of splitting plane // ToDo u8にする
+    pub aabb: Aabb,
+    pub left_node_record: BvhNodeConstructionRecord,
+    pub right_node_record: BvhNodeConstructionRecord,
 }
 
 impl BvhNode {
@@ -22,18 +64,21 @@ impl BvhNode {
         if list.is_empty() {
             return BvhNode {
                 left: Arc::new(Empty::new()),
+                left_node_record: BvhNodeConstructionRecord::empty(),
                 right: Arc::new(Empty::new()),
+                right_node_record: BvhNodeConstructionRecord::empty(),
                 axis: 0,
                 aabb: Aabb::empty(),
             };
         } else if list.len() == 1 {
             let head = list.pop().unwrap();
-            let head_box = head.bounding_box(time_0, time_1).unwrap();
             return BvhNode {
-                left: head,
+                left: head.clone(),
+                left_node_record: BvhNodeConstructionRecord::leaf(head.clone(), time_0, time_1),
                 right: Arc::new(Empty::new()),
+                right_node_record: BvhNodeConstructionRecord::empty(),
                 axis: 0,
-                aabb: head_box,
+                aabb: head.bounding_box(time_0, time_1).unwrap(),
             };
         }
         let mut bboxes = list
@@ -41,16 +86,31 @@ impl BvhNode {
             .map(|h| h.bounding_box(time_0, time_1).unwrap())
             .collect();
         let (axis, idx) = Self::search_splitting_axis_index(&mut bboxes);
-        let (left, right): (Arc<Hitable>, Arc<Hitable>) = if idx == 0 {
+        let (left, left_rec, right, right_rec): (
+            Arc<Hitable>,
+            BvhNodeConstructionRecord,
+            Arc<Hitable>,
+            BvhNodeConstructionRecord,
+        ) = if idx == 0 {
             // if (left, right) = (empty, whole) achieves min cost,
             debug_assert!(list.len() >= 2);
-            (Arc::new(HitableList::new(list)), Arc::new(Empty::new()))
+            let left_node = Arc::new(HitableList::new(list));
+            (
+                left_node.clone(),
+                BvhNodeConstructionRecord::leaf(left_node, time_0, time_1),
+                Arc::new(Empty::new()),
+                BvhNodeConstructionRecord::empty(),
+            )
         } else {
             Self::sort_hitables_center(&mut list, axis, time_0, time_1);
             let former = list.split_off(idx);
+            let left = Arc::new(BvhNode::new(former, time_0, time_1));
+            let right = Arc::new(BvhNode::new(list, time_0, time_1));
             (
-                Arc::new(BvhNode::new(former, time_0, time_1)),
-                Arc::new(BvhNode::new(list, time_0, time_1)),
+                left.clone(),
+                BvhNodeConstructionRecord::inner(left),
+                right.clone(),
+                BvhNodeConstructionRecord::inner(right),
             )
         };
         let left_box = left.bounding_box(time_0, time_1).unwrap();
@@ -58,7 +118,9 @@ impl BvhNode {
         let self_box = Aabb::unite(&left_box, &right_box);
         BvhNode {
             left: left,
+            left_node_record: left_rec,
             right: right,
+            right_node_record: right_rec,
             aabb: self_box,
             axis: axis,
         }

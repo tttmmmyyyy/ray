@@ -7,6 +7,7 @@ use ray::camera::Camera;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::empty::Empty;
 use ray::hitable::hitable_list::HitableList;
+use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
 use ray::hitable::transform::Transform;
@@ -71,6 +72,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     //     0.0,
     //     1.0,
     // ));
+    let teapot = Arc::new(OBVH::from_bvh_node(teapot));
     objs.push(teapot);
     // objs.push(bunny);
     let objs = Arc::new(HitableList::new(objs));

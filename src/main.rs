@@ -4,6 +4,10 @@ use crate::scenes::ScenesType;
 use rand::prelude::Rng;
 use ray::aliases::Vec3;
 use ray::scene::Scene;
+#[cfg(target_arch = "x86")]
+use std::arch::x86::*;
+#[cfg(target_arch = "x86_64")]
+use std::arch::x86_64::*;
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
@@ -103,12 +107,12 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 200;
-    const IMAGE_HEIGHT: i32 = 200;
+    const IMAGE_WIDTH: i32 = 64;
+    const IMAGE_HEIGHT: i32 = 64;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
     const RAYS_PER_PIXEL: i32 = 1000;
-    const THREAD_CNT: i32 = 4;
-    const REPORT_INTERVAL: i32 = 100;
+    const THREAD_CNT: i32 = 1;
+    const REPORT_INTERVAL: i32 = 8;
     const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(
@@ -129,14 +133,31 @@ fn main() {
         println!("REPORT_INTERVAL must divide THREAD_CNT.");
         std::process::exit(1);
     }
-    let scene = scenes::get(ScenesType::CornellBox, aspect);
-    let scene = scenes::get(ScenesType::ManySpheres, aspect);
-    // let scene = scenes::get(ScenesType::Teapot, aspect);
+    // let scene = scenes::get(ScenesType::CornellBox, aspect);
+    // let scene = scenes::get(ScenesType::ManySpheres, aspect);
+    let scene = scenes::get(ScenesType::Teapot, aspect);
     println!(
         "Scene constructed. ({:.3} secs elapsed)",
         duration_to_secs(&start_time.elapsed())
     );
     let rays_per_thread = RAYS_PER_PIXEL / THREAD_CNT;
+
+    // ToDo: remove
+    // {
+    //     let mut rng = rand::prelude::thread_rng();
+    //     for _ in 0..rays_per_thread {
+    //         for i in 0..IMAGE_WIDTH {
+    //             for j in 0..IMAGE_HEIGHT {
+    //                 let u = (i as f32 + rng.gen::<f32>()) / IMAGE_WIDTH as f32;
+    //                 let v = (j as f32 + rng.gen::<f32>()) / IMAGE_HEIGHT as f32;
+    //                 let ray = scene.camera.get_ray(u, v, &mut rng);
+    //                 let col = ray::calc_color(&ray, &scene, &mut rng, 50 /* depth */);
+    //                 // println!("end calc_color");
+    //             }
+    //         }
+    //     }
+    // }
+
     crossbeam::scope(|scope| {
         let (tx, cx) = channel::<ColorSum>();
         let mut opt_tx = Some(tx);

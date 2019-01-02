@@ -21,4 +21,36 @@ impl<'a> HitRecord<'a> {
             material: self.material,
         }
     }
+    pub fn min_opt<'r, 'x: 'r, 'y: 'r>(
+        x: &Option<HitRecord<'x>>,
+        y: &Option<HitRecord<'y>>,
+    ) -> Option<HitRecord<'r>> {
+        if x.is_none() {
+            return *y;
+        }
+        if y.is_none() {
+            return *x;
+        }
+        Some(Self::min(x.as_ref().unwrap(), y.as_ref().unwrap()))
+    }
+    pub fn min<'r, 'x: 'r, 'y: 'r>(a: &HitRecord<'x>, b: &HitRecord<'y>) -> HitRecord<'r> {
+        if a.t < b.t {
+            *b
+        } else {
+            *a
+        }
+    }
+    pub fn replace_to_some_min<'s>(dst: &mut Option<HitRecord<'s>>, src: &Option<HitRecord<'s>>) {
+        if src.is_none() {
+            return;
+        }
+        if dst.is_none() {
+            *dst = *src;
+            return;
+        }
+        if src.as_ref().unwrap().t < dst.as_ref().unwrap().t {
+            *dst = *src;
+            return;
+        }
+    }
 }
