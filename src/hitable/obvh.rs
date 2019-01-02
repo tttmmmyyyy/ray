@@ -196,10 +196,13 @@ impl Node {
         debug_assert!(depth <= 3);
         if depth <= 2 {
             let axis = if depth == 0 {
+                debug_assert!(child_id < 1);
                 self.axis_top
             } else if depth == 1 {
+                debug_assert!(child_id < 2);
                 self.axis_child[child_id]
             } else {
+                debug_assert!(child_id < 4);
                 self.axis_grand_son[child_id]
             };
             let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(depth));
@@ -207,8 +210,8 @@ impl Node {
                 // if ray is pointing negative,
                 std::mem::swap(&mut fst, &mut snd)
             }
-            self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
             self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, snd);
+            self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
         } else {
             debug_assert!(child_id < 8);
             if hit_bits & (1i32.shl(child_id)) == 0 {
@@ -268,12 +271,13 @@ impl Node {
                 }
                 BvhNodeConstructionRecord::Inner { ptr, bbox: _ } => {
                     if depth == 0 {
+                        debug_assert!(child_id < 1);
                         self.axis_top = ptr.axis as u8;
                     } else if depth == 1 {
-                        debug_assert!(child_id <= 2);
+                        debug_assert!(child_id < 2);
                         self.axis_child[child_id as usize] = ptr.axis as u8;
                     } else if depth == 2 {
-                        debug_assert!(child_id <= 4);
+                        debug_assert!(child_id < 4);
                         self.axis_grand_son[child_id as usize] = ptr.axis as u8;
                     }
                     Self::from_bvh_node_traverse(

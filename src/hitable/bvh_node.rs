@@ -103,9 +103,9 @@ impl BvhNode {
             )
         } else {
             Self::sort_hitables_center(&mut list, axis, time_0, time_1);
-            let former = list.split_off(idx);
-            let left = Arc::new(BvhNode::new(former, time_0, time_1));
-            let right = Arc::new(BvhNode::new(list, time_0, time_1));
+            let right_list = list.split_off(idx);
+            let left = Arc::new(BvhNode::new(list, time_0, time_1));
+            let right = Arc::new(BvhNode::new(right_list, time_0, time_1));
             (
                 left.clone(),
                 BvhNodeConstructionRecord::inner(left),
