@@ -18,5 +18,7 @@ pub trait Material: Send + Sync {
     }
     /// A characteristic function of scattering process.
     /// BRDF * cos(angle between scattered and rec.normal).
-    fn scattering_pdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32;
+    // fn scattering_pdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32;
+    /// ToDo: write a comment.
+    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3;
 }

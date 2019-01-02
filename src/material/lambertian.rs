@@ -1,4 +1,5 @@
 use crate::aliases::RandGen;
+use crate::aliases::Vec3;
 use crate::hit_record::HitRecord;
 use crate::material::Material;
 use crate::pdf::cosine::CosinePdf;
@@ -28,8 +29,13 @@ impl Material for Lambertian {
             },
         })
     }
-    fn scattering_pdf(&self, _ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32 {
-        let cosine = rec.normal.dot(&scattered.direction.normalize());
-        (cosine / PI).max(0.0)
+    // ToDo: remove
+    // fn scattering_pdf(&self, _ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32 {
+    //     let cosine = rec.normal.dot(&scattered.direction.normalize());
+    //     (cosine / PI).max(0.0)
+    // }
+    // ToDo: ScatterRecord から albedo を削除する。
+    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+        ((1.0 / PI) * self.albedo.value(&rec.tex_coord, &rec.point)).component_mul(in_light)
     }
 }

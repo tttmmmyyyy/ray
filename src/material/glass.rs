@@ -84,7 +84,7 @@ impl Material for Glass {
             })
         }
     }
-    fn scattering_pdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord) -> f32 {
-        panic!("scattering_pdf called for Glass")
+    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+        panic!("brdf called for Glass.")
     }
 }

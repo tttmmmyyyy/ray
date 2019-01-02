@@ -4,8 +4,10 @@ use ray::affine::Affine;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
+use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::cube;
 use ray::hitable::hitable_list::HitableList;
+use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
 use ray::hitable::transform::Transform;
@@ -126,7 +128,8 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     ));
     objs.push(metal_sphere.clone()); // metal sphere
     importance.push(metal_sphere);
-    let objs = Arc::new(HitableList::new(objs));
+    // let objs = Arc::new(HitableList::new(objs));
+    let objs = Arc::new(OBVH::from_bvh_node(Arc::new(BvhNode::new(objs, 0.0, 1.0))));
     let importance = Arc::new(HitableList::new(importance));
     let look_from = Vec3::new(278.0, 278.0, -800.0);
     let look_at = Vec3::new(278.0, 278.0, 0.0);

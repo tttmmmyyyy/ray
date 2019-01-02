@@ -64,13 +64,9 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                     let dir = pdf.generate(rng);
                     let density = pdf.density(&dir);
                     let scat = Ray::new(&rec.point, &dir, rec.t);
-                    let scat_pdf = rec.material.scattering_pdf(ray, &scat, rec);
-                    (scat_pdf / density * s_rec.attenuation).component_mul(&calc_color(
-                        &scat,
-                        &scene,
-                        rng,
-                        depth - 1,
-                    ))
+                    let in_light = calc_color(&scat, &scene, rng, depth - 1);
+                    let cosine = rec.normal.dot(&dir.normalize());
+                    (cosine / density) * rec.material.brdf(ray, &scat, rec, &in_light)
                 }
                 SingularPdf::Delta { ref dir } => s_rec.attenuation.component_mul(&calc_color(
                     &Ray::new(&rec.point, dir, rec.t),
