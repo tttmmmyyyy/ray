@@ -130,9 +130,9 @@ impl Hitable for OBVH {
                             &self.leaves[node_ptr.index()].hit(ray, t_min, t_max),
                         );
                         hit_record.map(|ref hr| {
+                            debug_assert!(t_min <= hr.t && hr.t <= t_max);
                             t_max = hr.t;
                         });
-                        debug_assert!(t_min <= t_max);
                     } else {
                         // if an inner node,
                         let node = &self.inners[node_ptr.index()];
