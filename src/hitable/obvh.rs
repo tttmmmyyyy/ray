@@ -70,6 +70,37 @@ struct NodePointer {
     info: u32,
 }
 
+const NODE_STACK_UPPER_BOUND: usize = 32;
+
+struct NodeStack {
+    data: [NodePointer; NODE_STACK_UPPER_BOUND],
+    end: usize,
+}
+
+impl NodeStack {
+    fn is_empty(&self) -> bool {
+        self.end == 0
+    }
+    fn push(&mut self, elem: NodePointer) {
+        self.data[self.end] = elem;
+        self.end += 1;
+    }
+    fn pop(&mut self) -> NodePointer {
+        debug_assert!(!self.is_empty());
+        self.end -= 1;
+        self.data[self.end]
+    }
+    fn empty() -> Self {
+        NodeStack {
+            data: [NodePointer::empty_leaf(); NODE_STACK_UPPER_BOUND],
+            end: 0,
+        }
+    }
+    fn len(&self) -> usize {
+        self.end
+    }
+}
+
 impl NodePointer {
     pub fn root() -> Self {
         NodePointer { info: 0 }
@@ -109,40 +140,41 @@ fn duration_to_secs(dur: &Duration) -> f64 {
 
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
+        // let start_time = Instant::now();
+
         let ray_avx = RayAVXInfo::from_ray(ray);
-        let mut node_stack: Vec<NodePointer> = vec![]; // ToDo: reserve.
-        const NODE_STACK_UPPER_BOUND: usize = 32;
-        node_stack.reserve(NODE_STACK_UPPER_BOUND);
+        let mut node_stack = NodeStack::empty();
         node_stack.push(NodePointer::root());
         let mut hit_record: Option<HitRecord<'s>> = None;
-        loop {
-            match node_stack.pop() {
-                None => {
-                    break;
+
+        // println!("prepare: {}", duration_to_secs(&start_time.elapsed()));
+
+        while !node_stack.is_empty() {
+            let node_ptr = node_stack.pop();
+            if node_ptr.is_leaf() {
+                if node_ptr.is_empty_leaf() {
+                    continue;
                 }
-                Some(node_ptr) => {
-                    if node_ptr.is_leaf() {
-                        if node_ptr.is_empty_leaf() {
-                            continue;
-                        }
-                        HitRecord::replace_to_some_min(
-                            &mut hit_record,
-                            &self.leaves[node_ptr.index()].hit(ray, t_min, t_max),
-                        );
-                        hit_record.map(|ref hr| {
-                            debug_assert!(t_min <= hr.t && hr.t <= t_max);
-                            t_max = hr.t;
-                        });
-                    } else {
-                        // if an inner node,
-                        let node = &self.inners[node_ptr.index()];
-                        let hit_bits = node.hit(&ray_avx, t_min, t_max);
-                        node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
-                        debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
-                    }
-                }
+                HitRecord::replace_to_some_min(
+                    &mut hit_record,
+                    &self.leaves[node_ptr.index()].hit(ray, t_min, t_max),
+                );
+                hit_record.map(|ref hr| {
+                    debug_assert!(t_min <= hr.t && hr.t <= t_max);
+                    t_max = hr.t;
+                });
+            } else {
+                // if an inner node,
+                let node = &self.inners[node_ptr.index()];
+                let hit_bits = node.hit(&ray_avx, t_min, t_max);
+                debug_assert!(hit_bits <= 255);
+                node.push_node_stack(&mut node_stack, &ray_avx, hit_bits as u8);
+                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
             }
         }
+
+        // println!("total: {}", duration_to_secs(&start_time.elapsed()));
+
         hit_record
     }
     fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
@@ -186,7 +218,7 @@ impl Node {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
     #[inline(always)]
-    fn push_node_stack(&self, node_stack: &mut Vec<NodePointer>, ray: &RayAVXInfo, hit_bits: i32) {
+    fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
         self.push_node_stack_depth0(node_stack, ray, hit_bits, 0);
         // self.push_node_stack_recursive(node_stack, ray, hit_bits, 0, 0);
         // self.push_node_stack_inlined(node_stack, ray, hit_bits);
@@ -194,64 +226,59 @@ impl Node {
     #[inline(always)]
     fn push_node_stack_depth0(
         &self,
-        node_stack: &mut Vec<NodePointer>,
+        node_stack: &mut NodeStack,
         ray: &RayAVXInfo,
-        hit_bits: i32,
-        child_id: usize,
+        hit_bits: u8,
+        child_id: u8,
     ) {
         let axis = self.axis_top;
-        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(0));
         if ray.dir_sign[axis as usize] > 0 {
-            // if ray is pointing negative,
-            std::mem::swap(&mut fst, &mut snd)
+            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
+            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
+        } else {
+            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
+            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
         }
-        self.push_node_stack_depth1(node_stack, ray, hit_bits, snd);
-        self.push_node_stack_depth1(node_stack, ray, hit_bits, fst);
     }
     #[inline(always)]
     fn push_node_stack_depth1(
         &self,
-        node_stack: &mut Vec<NodePointer>,
+        node_stack: &mut NodeStack,
         ray: &RayAVXInfo,
-        hit_bits: i32,
-        child_id: usize,
+        hit_bits: u8,
+        child_id: u8,
     ) {
-        let axis = self.axis_child[child_id];
-        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
+        let axis = self.axis_child[child_id as usize];
         if ray.dir_sign[axis as usize] > 0 {
-            // if ray is pointing negative,
-            std::mem::swap(&mut fst, &mut snd)
+            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
+            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
+        } else {
+            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
+            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
         }
-        self.push_node_stack_depth2(node_stack, ray, hit_bits, snd);
-        self.push_node_stack_depth2(node_stack, ray, hit_bits, fst);
     }
     #[inline(always)]
     fn push_node_stack_depth2(
         &self,
-        node_stack: &mut Vec<NodePointer>,
+        node_stack: &mut NodeStack,
         ray: &RayAVXInfo,
-        hit_bits: i32,
-        child_id: usize,
+        hit_bits: u8,
+        child_id: u8,
     ) {
-        let axis = self.axis_grand_son[child_id];
-        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+        let axis = self.axis_grand_son[child_id as usize];
         if ray.dir_sign[axis as usize] > 0 {
-            // if ray is pointing negative,
-            std::mem::swap(&mut fst, &mut snd)
+            self.push_node_stack_depth3(node_stack, hit_bits, child_id);
+            self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
+        } else {
+            self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
+            self.push_node_stack_depth3(node_stack, hit_bits, child_id);
         }
-        self.push_node_stack_depth3(node_stack, hit_bits, snd);
-        self.push_node_stack_depth3(node_stack, hit_bits, fst);
     }
     #[inline(always)]
-    fn push_node_stack_depth3(
-        &self,
-        node_stack: &mut Vec<NodePointer>,
-        hit_bits: i32,
-        child_id: usize,
-    ) {
-        if hit_bits & (1i32.shl(child_id)) != 0 {
+    fn push_node_stack_depth3(&self, node_stack: &mut NodeStack, hit_bits: u8, child_id: u8) {
+        if hit_bits & (1u8.shl(child_id)) != 0 {
             // if this node hits the ray
-            node_stack.push(self.children[child_id]);
+            node_stack.push(self.children[child_id as usize]);
         }
     }
     #[allow(dead_code)]
