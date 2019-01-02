@@ -107,7 +107,7 @@ fn duration_to_secs(dur: &Duration) -> f64 {
     dur.as_secs() as f64 + dur.subsec_millis() as f64 * 0.001 + dur.subsec_nanos() as f64 * 0.000001
 }
 
-// ToDo: 再帰関数はインライン展開されないのではないか。手動インライン展開するとよいかも。
+// ToDo: 再帰関数はインライン展開されないのではないか。push_node_stackを手動インライン展開するとよいかも。
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
         let ray_avx = RayAVXInfo::from_ray(ray);
@@ -282,7 +282,7 @@ impl Node {
                         children,
                         &ptr.left_node_record,
                         depth + 1,
-                        child_id | 1u8.shl(depth),
+                        child_id & !1u8.shl(depth),
                     );
                     Self::from_bvh_node_traverse(
                         self,
@@ -290,7 +290,7 @@ impl Node {
                         children,
                         &ptr.right_node_record,
                         depth + 1,
-                        child_id & !1u8.shl(depth),
+                        child_id | 1u8.shl(depth),
                     );
                 }
             }
