@@ -1,3 +1,4 @@
+pub mod lbp;
 pub mod diffuse_light;
 pub mod glass;
 pub mod lambertian;
