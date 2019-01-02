@@ -107,18 +107,20 @@ fn duration_to_secs(dur: &Duration) -> f64 {
     dur.as_secs() as f64 + dur.subsec_millis() as f64 * 0.001 + dur.subsec_nanos() as f64 * 0.000001
 }
 
-// ToDo: 再帰関数はインライン展開されないのではないか。push_node_stackを手動インライン展開するとよいかも。
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
+        // let mut debug_time = Instant::now();
         let ray_avx = RayAVXInfo::from_ray(ray);
         let mut node_stack: Vec<NodePointer> = vec![]; // ToDo: reserve.
         const NODE_STACK_UPPER_BOUND: usize = 32;
         node_stack.reserve(NODE_STACK_UPPER_BOUND);
         node_stack.push(NodePointer::root());
         let mut hit_record: Option<HitRecord<'s>> = None;
+        // println!("prepare: {}", duration_to_secs(&debug_time.elapsed()));
         while !node_stack.is_empty() {
             let node_ptr = node_stack.pop().unwrap();
             if node_ptr.is_leaf() {
+                // debug_time = Instant::now();
                 // if a leaf node,
                 if node_ptr.is_empty_leaf() {
                     continue;
@@ -131,11 +133,19 @@ impl Hitable for OBVH {
                     t_max = hr.t;
                 });
                 debug_assert!(t_min <= t_max);
+            // println!("process leaf: {}", duration_to_secs(&debug_time.elapsed()));
             } else {
                 // if an inner node,
                 let node = &self.inners[node_ptr.index()];
+                // debug_time = Instant::now();
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
+                // println!("SIMD hit: {}", duration_to_secs(&debug_time.elapsed()));
+                // debug_time = Instant::now();
                 node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
+                // println!(
+                //     "push_node_stack: {}",
+                //     duration_to_secs(&debug_time.elapsed())
+                // );
                 // println!("{} {}", node_stack.len(), node_ptr.index()); // ToDo: remove
                 debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND); // ToDo: debug_assert
             }
@@ -182,9 +192,75 @@ impl Node {
     fn hit(&self, ray: &RayAVXInfo, t_min: f32, t_max: f32) -> i32 {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
+    #[inline(always)]
     fn push_node_stack(&self, node_stack: &mut Vec<NodePointer>, ray: &RayAVXInfo, hit_bits: i32) {
-        self.push_node_stack_core(node_stack, ray, hit_bits, 0, 0)
+        self.push_node_stack_depth0(node_stack, ray, hit_bits, 0)
     }
+    #[inline(always)]
+    fn push_node_stack_depth0(
+        &self,
+        node_stack: &mut Vec<NodePointer>,
+        ray: &RayAVXInfo,
+        hit_bits: i32,
+        child_id: usize,
+    ) {
+        let axis = self.axis_top;
+        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(0));
+        if ray.dir_sign[axis as usize] > 0 {
+            // if ray is pointing negative,
+            std::mem::swap(&mut fst, &mut snd)
+        }
+        self.push_node_stack_depth1(node_stack, ray, hit_bits, snd);
+        self.push_node_stack_depth1(node_stack, ray, hit_bits, fst);
+    }
+    #[inline(always)]
+    fn push_node_stack_depth1(
+        &self,
+        node_stack: &mut Vec<NodePointer>,
+        ray: &RayAVXInfo,
+        hit_bits: i32,
+        child_id: usize,
+    ) {
+        let axis = self.axis_child[child_id];
+        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
+        if ray.dir_sign[axis as usize] > 0 {
+            // if ray is pointing negative,
+            std::mem::swap(&mut fst, &mut snd)
+        }
+        self.push_node_stack_depth2(node_stack, ray, hit_bits, snd);
+        self.push_node_stack_depth2(node_stack, ray, hit_bits, fst);
+    }
+    #[inline(always)]
+    fn push_node_stack_depth2(
+        &self,
+        node_stack: &mut Vec<NodePointer>,
+        ray: &RayAVXInfo,
+        hit_bits: i32,
+        child_id: usize,
+    ) {
+        let axis = self.axis_grand_son[child_id];
+        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+        if ray.dir_sign[axis as usize] > 0 {
+            // if ray is pointing negative,
+            std::mem::swap(&mut fst, &mut snd)
+        }
+        self.push_node_stack_depth3(node_stack, ray, hit_bits, snd);
+        self.push_node_stack_depth3(node_stack, ray, hit_bits, fst);
+    }
+    #[inline(always)]
+    fn push_node_stack_depth3(
+        &self,
+        node_stack: &mut Vec<NodePointer>,
+        ray: &RayAVXInfo,
+        hit_bits: i32,
+        child_id: usize,
+    ) {
+        if hit_bits & (1i32.shl(child_id)) != 0 {
+            // if this node hits the ray
+            node_stack.push(self.children[child_id]);
+        }
+    }
+    #[allow(dead_code)]
     fn push_node_stack_core(
         &self,
         node_stack: &mut Vec<NodePointer>,
@@ -214,11 +290,10 @@ impl Node {
             self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
         } else {
             debug_assert!(child_id < 8);
-            if hit_bits & (1i32.shl(child_id)) == 0 {
-                // if this node does not hit the ray
-                return;
+            if hit_bits & (1i32.shl(child_id)) != 0 {
+                // if this node hits the ray
+                node_stack.push(self.children[child_id]);
             }
-            node_stack.push(self.children[child_id]);
         }
     }
     fn empty() -> Self {
@@ -537,3 +612,139 @@ pub fn test_load_movemask_order_compatibility() {
 // }
 // println!("{:b}", debug_node.hit(&debug_ray_avx, 0.0, std::f32::MAX));
 // // println!("{}, {}", t_min, t_max); // ToDo: たまにt_maxが大きな数になっているので確認する。
+
+// Or,
+// self.push_node_stack_core(node_stack, ray, hit_bits, 0, 0)
+// Or,
+// manually inlining this, ...
+// let child_id: usize = 0;
+// let axis = self.axis_top;
+// let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(0));
+// if ray.dir_sign[axis as usize] > 0 {
+//     // if ray is pointing negative,
+//     std::mem::swap(&mut fst, &mut snd)
+// }
+// {
+//     // self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, snd);
+//     let child_id: usize = snd;
+//     let axis = self.axis_child[child_id];
+//     let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
+//     if ray.dir_sign[axis as usize] > 0 {
+//         // if ray is pointing negative,
+//         std::mem::swap(&mut fst, &mut snd)
+//     }
+//     {
+//         // self.push_node_stack_core(node_stack, ray, hit_bits, 2, snd);
+//         let child_id: usize = snd;
+//         let axis = self.axis_grand_son[child_id];
+//         let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+//         if ray.dir_sign[axis as usize] > 0 {
+//             // if ray is pointing negative,
+//             std::mem::swap(&mut fst, &mut snd)
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
+//             let child_id: usize = snd;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
+//             let child_id: usize = fst;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//     }
+//     {
+//         // self.push_node_stack_core(node_stack, ray, hit_bits, 2, fst);
+//         let child_id: usize = fst;
+//         let axis = self.axis_grand_son[child_id];
+//         let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+//         if ray.dir_sign[axis as usize] > 0 {
+//             // if ray is pointing negative,
+//             std::mem::swap(&mut fst, &mut snd)
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
+//             let child_id: usize = snd;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
+//             let child_id: usize = fst;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//     }
+// }
+// {
+//     // self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
+//     let child_id: usize = fst;
+//     let axis = self.axis_child[child_id];
+//     let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
+//     if ray.dir_sign[axis as usize] > 0 {
+//         // if ray is pointing negative,
+//         std::mem::swap(&mut fst, &mut snd)
+//     }
+//     {
+//         // self.push_node_stack_core(node_stack, ray, hit_bits, 2, snd);
+//         let child_id: usize = snd;
+//         let axis = self.axis_grand_son[child_id];
+//         let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+//         if ray.dir_sign[axis as usize] > 0 {
+//             // if ray is pointing negative,
+//             std::mem::swap(&mut fst, &mut snd)
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
+//             let child_id: usize = snd;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
+//             let child_id: usize = fst;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//     }
+//     {
+//         // self.push_node_stack_core(node_stack, ray, hit_bits, 2, fst);
+//         let child_id: usize = fst;
+//         let axis = self.axis_grand_son[child_id];
+//         let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
+//         if ray.dir_sign[axis as usize] > 0 {
+//             // if ray is pointing negative,
+//             std::mem::swap(&mut fst, &mut snd)
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
+//             let child_id: usize = snd;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//         {
+//             // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
+//             let child_id: usize = fst;
+//             if hit_bits & (1i32.shl(child_id)) != 0 {
+//                 // if this node hits the ray
+//                 node_stack.push(self.children[child_id]);
+//             }
+//         }
+//     }
+// }
