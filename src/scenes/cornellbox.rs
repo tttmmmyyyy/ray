@@ -23,7 +23,6 @@ use std::sync::Arc;
 
 pub fn scene(aspect_ratio: f32) -> Scene {
     let mut objs = Vec::<Arc<Hitable>>::new();
-    let mut importance = Vec::<Arc<Hitable>>::new();
     objs.push(Arc::new(Rectangle::new(
         &Vec3::new(0.0, 0.0, 555.0),
         &Vec3::new(0.0, 555.0, 0.0),
@@ -82,7 +81,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         0.001,
     ));
     objs.push(light.clone()); // light
-    importance.push(light);
     let lambert_white = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 1.0, 1.0,
     )))));
@@ -120,17 +118,15 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         Arc::new(Glass::new(2.2, 0.0)),
     ));
     objs.push(glass_sphere.clone()); // glass sphere
-    importance.push(glass_sphere);
     let metal_sphere = Arc::new(Sphere::new(
         &Vec3::new(265.0 + 165.0 * 0.5, 333.0 + 82.5, 295.0 + 165.0 * 0.5),
         82.5,
         Arc::new(Metal::new(&Vec3::new(1.0, 1.0, 1.0), 0.3)),
     ));
     objs.push(metal_sphere.clone()); // metal sphere
-    importance.push(metal_sphere);
-    // let objs = Arc::new(HitableList::new(objs));
+                                     // let objs = Arc::new(HitableList::new(objs));
     let objs = Arc::new(OBVH::from_bvh_node(Arc::new(BvhNode::new(objs, 0.0, 1.0))));
-    let importance = Arc::new(HitableList::new(importance));
+    let importance = light.clone();
     let look_from = Vec3::new(278.0, 278.0, -800.0);
     let look_at = Vec3::new(278.0, 278.0, 0.0);
     let dist_to_focus = 10.0;

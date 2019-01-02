@@ -133,9 +133,9 @@ fn main() {
         println!("REPORT_INTERVAL must divide THREAD_CNT.");
         std::process::exit(1);
     }
-    // let scene = scenes::get(ScenesType::CornellBox, aspect);
+    let scene = scenes::get(ScenesType::CornellBox, aspect);
     // let scene = scenes::get(ScenesType::ManySpheres, aspect);
-    let scene = scenes::get(ScenesType::Teapot, aspect);
+    // let scene = scenes::get(ScenesType::Teapot, aspect);
     println!(
         "Scene constructed. ({:.3} secs elapsed)",
         duration_to_secs(&start_time.elapsed())
