@@ -574,12 +574,15 @@ impl OBVH {
                         node.children[i] = NodePointer::new(true, idx);
                     }
                 }
-                BvhNodeConstructionRecord::Inner { ptr: _, bbox: _ } => {
-                    // ToDo: 簡約処理を入れるなら、ここである。
-                    // innerを調べて、片方にしかleafがないnodeなら、add_leafの方を呼ぶようにする。
-                    // あるいは、BvhNodeでそういう構造ができないように実装するか。どちらだろう。
-                    let idx = Self::add_inner(&children[i], inners, leaves);
-                    inners[node_idx].children[i] = NodePointer::new(false, idx);
+                BvhNodeConstructionRecord::Inner { ptr, bbox: _ } => {
+                    if let Some(singleton) = ptr.singleton_node() {
+                        let idx = Self::add_leaf(singleton, leaves);
+                        inners[node_idx].children[i] = NodePointer::new(true, idx);
+                    } else {
+                        debug_assert!(!ptr.is_both_node_empty());
+                        let idx = Self::add_inner(&children[i], inners, leaves);
+                        inners[node_idx].children[i] = NodePointer::new(false, idx);
+                    }
                 }
             }
         }

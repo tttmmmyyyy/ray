@@ -180,6 +180,22 @@ impl BvhNode {
     fn cost_sah(box_surface_area: f32, primitives: i32) -> f32 {
         box_surface_area * primitives as f32
     }
+    pub fn is_both_node_empty(&self) -> bool {
+        self.left_node_record.bbox().is_empty() && self.right_node_record.bbox().is_empty()
+    }
+    pub fn singleton_node(&self) -> Option<Arc<Hitable>> {
+        if self.is_both_node_empty() {
+            return None;
+        }
+        if !self.left_node_record.bbox().is_empty() && !self.right_node_record.bbox().is_empty() {
+            return None;
+        }
+        if self.left_node_record.bbox().is_empty() {
+            Some(self.right.clone())
+        } else {
+            Some(self.left.clone())
+        }
+    }
 }
 
 impl Hitable for BvhNode {
