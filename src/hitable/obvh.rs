@@ -11,16 +11,17 @@ use std::arch::x86_64::*;
 use std::ops::Shl;
 use std::ops::Shr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 struct RayAVXInfo {
     origin: [__m256; 3],  // origin[axis_idx] = 8 copies of ray.origin[axis_idx]
     inv_dir: [__m256; 3], // origin[axis_idx] = 8 copies of 1.0 / ray.direction[axis_idx]
-    dir_sign: [u8; 3], // dir_sign[axis_idx] = 1 (resp. 0) if ray.direction[axis_idx] >= 0 (resp. < 0)
+    dir_sign: [u8; 3], // dir_sign[axis_idx] = 0 (resp. 1) if ray.direction[axis_idx] >= 0 (resp. < 0)
 }
 
 impl RayAVXInfo {
     fn from_ray(ray: &Ray) -> Self {
-        let calc_sign = |axis| (ray.direction[axis] >= 0.0) as u8;
+        let calc_sign = |axis| (ray.direction[axis] < 0.0) as u8;
         unsafe {
             Self {
                 origin: [
@@ -102,6 +103,11 @@ impl NodePointer {
     }
 }
 
+fn duration_to_secs(dur: &Duration) -> f64 {
+    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 0.001 + dur.subsec_nanos() as f64 * 0.000001
+}
+
+// ToDo: 再帰関数はインライン展開されないのではないか。手動インライン展開するとよいかも。
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
         let ray_avx = RayAVXInfo::from_ray(ray);
@@ -197,14 +203,15 @@ impl Node {
                 self.axis_grand_son[child_id]
             };
             let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(depth));
-            if ray.dir_sign[axis as usize] == 0 {
+            if ray.dir_sign[axis as usize] > 0 {
+                // if ray is pointing negative,
                 std::mem::swap(&mut fst, &mut snd)
             }
             self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
             self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, snd);
         } else {
             debug_assert!(child_id < 8);
-            if hit_bits ^ (1i32.shl(child_id)) == 0 {
+            if hit_bits & (1i32.shl(child_id)) == 0 {
                 // if this node does not hit the ray
                 return;
             }
@@ -234,6 +241,12 @@ impl Node {
         Self::from_bvh_node_traverse(&mut this, &mut bboxes, &mut children, bvh_node, 0, 0);
         this.bboxes = Self::convert_bboxes(&bboxes);
         (this, children)
+    }
+    // ToDo-research: 上のfrom_bvh_node関数で let mut bboxes = Self::empty_bboxes_array_layout(); とすると、
+    // リリースビルドのときのみSegmentation faultが発生する。
+    #[allow(dead_code)]
+    fn empty_bboxes_array_layout() -> [[[f32; 8]; 3]; 2] {
+        [[[std::f32::MAX; 8]; 3], [[std::f32::MIN; 8]; 3]]
     }
     fn from_bvh_node_traverse(
         &mut self,
@@ -488,3 +501,35 @@ pub fn test_load_movemask_order_compatibility() {
 //         }
 //     }
 // }
+
+// let mut debug_node = Node::empty();
+// let mut bboxes = [[[0.0f32; 8]; 3]; 2];
+// Node::set_bboxes_array_layout(
+//     &mut bboxes,
+//     0,
+//     &Aabb::new(&Vec3::new(-1.0, -1.0, -1.0), &Vec3::new(1.0, 1.0, 1.0)),
+// );
+// debug_node.bboxes = Node::convert_bboxes(&bboxes);
+// let debug_ray_avx = RayAVXInfo::from_ray(&Ray::new(
+//     &Vec3::new(-2.0, -2.0, -2.0),
+//     &Vec3::new(1.0, 1.0, 1.0),
+//     0.0,
+// ));
+// // ToDo: remove
+// for min_max in 0..2 {
+//     for axis in 0..3 {
+//         let mut bboxes_at_child = [0.0f32; 8];
+//         unsafe {
+//             _mm256_store_ps(
+//                 bboxes_at_child.as_mut_ptr(),
+//                 debug_node.bboxes[min_max][axis],
+//             );
+//         }
+//         println!(
+//             "min_max: {}, axis: {}, src: {:?}, res: {:?}",
+//             min_max, axis, bboxes[min_max][axis], bboxes_at_child
+//         );
+//     }
+// }
+// println!("{:b}", debug_node.hit(&debug_ray_avx, 0.0, std::f32::MAX));
+// // println!("{}, {}", t_min, t_max); // ToDo: たまにt_maxが大きな数になっているので確認する。
