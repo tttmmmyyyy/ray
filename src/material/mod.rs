@@ -17,7 +17,6 @@ pub trait Material: Send + Sync {
         Vec3::new(0.0, 0.0, 0.0)
     }
     /// A characteristic function of scattering process.
-    /// Propotional to the reciprocal of BRDF.
-    /// This function must be normalized as a pdf in the "scattered" argument.
+    /// BRDF * cos(angle between scattered and rec.normal).
     fn scattering_pdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32;
 }

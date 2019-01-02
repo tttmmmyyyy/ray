@@ -59,14 +59,9 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                 SingularPdf::Finite {
                     pdf: ref material_pdf,
                 } => {
-                    // let imp_objs_pdf = HitablePdf::new(&(*scene.importance), &rec.point);
-                    // let pdf =
-                    //     MixturePdf::new(scene.importance_weight, &imp_objs_pdf, &**material_pdf);
-                    // let pdf = mix_pdf_importance_hitable(&**material_pdf, scene, &rec.point);
                     let imp_objs_pdf = create_importance_hitable_pdf(scene, &rec.point);
                     let pdf = mix_importance_hitable_pdf(&**material_pdf, &imp_objs_pdf);
                     let dir = pdf.generate(rng);
-                    // println!("{}", dir);
                     let density = pdf.density(&dir);
                     let scat = Ray::new(&rec.point, &dir, rec.t);
                     let scat_pdf = rec.material.scattering_pdf(ray, &scat, rec);
