@@ -316,13 +316,16 @@ impl Node {
         child_id: u8,
     ) {
         let axis = self.axis_top;
-        if ray.dir_sign[axis as usize] > 0 {
-            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
-            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
-        } else {
-            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
-            self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
-        }
+        let sign = ray.dir_sign[axis as usize];
+        self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id ^ ((1 - sign).shl(0)));
+        self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id ^ (sign.shl(0)));
+        // if ray.dir_sign[axis as usize] > 0 {
+        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
+        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
+        // } else {
+        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
+        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
+        // }
     }
     #[inline(always)]
     fn push_node_stack_depth1(
@@ -333,13 +336,16 @@ impl Node {
         child_id: u8,
     ) {
         let axis = self.axis_child[child_id as usize];
-        if ray.dir_sign[axis as usize] > 0 {
-            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
-            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
-        } else {
-            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
-            self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
-        }
+        let sign = ray.dir_sign[axis as usize];
+        self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id ^ ((1 - sign).shl(1)));
+        self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id ^ (sign.shl(1)));
+        // if ray.dir_sign[axis as usize] > 0 {
+        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
+        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
+        // } else {
+        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
+        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
+        // }
     }
     #[inline(always)]
     fn push_node_stack_depth2(
@@ -350,13 +356,16 @@ impl Node {
         child_id: u8,
     ) {
         let axis = self.axis_grand_son[child_id as usize];
-        if ray.dir_sign[axis as usize] > 0 {
-            self.push_node_stack_depth3(node_stack, hit_bits, child_id);
-            self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
-        } else {
-            self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
-            self.push_node_stack_depth3(node_stack, hit_bits, child_id);
-        }
+        let sign = ray.dir_sign[axis as usize];
+        self.push_node_stack_depth3(node_stack, hit_bits, child_id ^ ((1 - sign).shl(2)));
+        self.push_node_stack_depth3(node_stack, hit_bits, child_id ^ (sign.shl(2)));
+        // if ray.dir_sign[axis as usize] > 0 {
+        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id);
+        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
+        // } else {
+        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
+        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id);
+        // }
     }
     #[inline(always)]
     fn push_node_stack_depth3(&self, node_stack: &mut NodeStack, hit_bits: u8, child_id: u8) {
