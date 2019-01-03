@@ -4,12 +4,55 @@ use crate::ray::Ray;
 use crate::util::{max_vec3, min_vec3};
 use itertools::iproduct;
 use std;
+use std::default;
+use std::fmt;
 
 /// Axis-Aligned Bounding Box
 #[derive(Clone, Copy)]
 pub struct Aabb {
     pub min: Vec3,
     pub max: Vec3,
+}
+
+impl fmt::Display for Aabb {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::util::pretty_print_f32;
+        write!(
+            f,
+            "(min: ({},{},{}), max: ({},{},{}))",
+            pretty_print_f32(self.min[0]),
+            pretty_print_f32(self.min[1]),
+            pretty_print_f32(self.min[2]),
+            pretty_print_f32(self.max[0]),
+            pretty_print_f32(self.max[1]),
+            pretty_print_f32(self.max[2])
+        )
+    }
+}
+
+impl fmt::Debug for Aabb {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use crate::util::pretty_print_f32;
+        write!(
+            f,
+            "(min: ({},{},{}), max: ({},{},{})), center: ({},{},{})",
+            pretty_print_f32(self.min[0]),
+            pretty_print_f32(self.min[1]),
+            pretty_print_f32(self.min[2]),
+            pretty_print_f32(self.max[0]),
+            pretty_print_f32(self.max[1]),
+            pretty_print_f32(self.max[2]),
+            pretty_print_f32(self.center()[0]),
+            pretty_print_f32(self.center()[1]),
+            pretty_print_f32(self.center()[2])
+        )
+    }
+}
+
+impl default::Default for Aabb {
+    fn default() -> Self {
+        Aabb::empty()
+    }
 }
 
 impl Aabb {
@@ -110,5 +153,8 @@ impl Aabb {
         lhs_center
             .partial_cmp(&rhs_center)
             .unwrap_or(std::cmp::Ordering::Equal)
+    }
+    pub fn center(&self) -> Vec3 {
+        0.5 * (self.min + self.max)
     }
 }

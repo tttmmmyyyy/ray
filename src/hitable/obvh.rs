@@ -8,6 +8,7 @@ use crate::ray::Ray;
 use std::arch::x86::*;
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
+use std::fmt;
 use std::ops::Shl;
 use std::ops::Shr;
 use std::sync::Arc;
@@ -63,6 +64,77 @@ struct Node {
     axis_top: u8,            // Axis dividing left-leaves and right-leaves.
     axis_child: [u8; 2],     // axis_child[i] = axis dividing children with child_id % 2 == i
     axis_grand_son: [u8; 4], // axis_child[i] = axis dividing children with child_id % 4 == i
+}
+
+impl fmt::Debug for Node {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let bboxes_array = Self::store_bboxes(&self.bboxes);
+        let mut aabbs: [Aabb; 8] = Default::default();
+        Self::eight_aabb_from_array_layout(&mut aabbs, &bboxes_array);
+        write!(
+            f,
+            "axis: {axis_top}
+left:
+  axis: {axis_child_0}
+  left:
+    axis: {axis_grand_son_00}
+    left:
+      bbox: {bbox_000:?}
+      ptr: {ptr_000}
+    right:
+      bbox: {bbox_100:?}
+      ptr: {ptr_100}
+  right:
+    axis: {axis_grand_son_10}
+    left:
+      bbox: {bbox_010:?}
+      ptr: {ptr_010}
+    right:
+      bbox: {bbox_110:?}
+      ptr: {ptr_110}
+right:
+  axis: {axis_child_1}
+  left:
+    axis: {axis_grand_son_01}
+    left:
+      bbox: {bbox_001:?}
+      ptr: {ptr_001}
+    right:
+      bbox: {bbox_101:?}
+      ptr: {ptr_101}
+  right:
+    axis: {axis_grand_son_11}
+    left:
+      bbox: {bbox_011:?}
+      ptr: {ptr_011}
+    right:
+      bbox: {bbox_111:?}
+      ptr: {ptr_111}",
+            axis_top = self.axis_top,
+            axis_child_0 = self.axis_child[0],
+            axis_child_1 = self.axis_child[1],
+            axis_grand_son_00 = self.axis_grand_son[0b00usize],
+            axis_grand_son_01 = self.axis_grand_son[0b01usize],
+            axis_grand_son_10 = self.axis_grand_son[0b10usize],
+            axis_grand_son_11 = self.axis_grand_son[0b11usize],
+            bbox_000 = aabbs[0b000usize],
+            bbox_001 = aabbs[0b001usize],
+            bbox_010 = aabbs[0b010usize],
+            bbox_011 = aabbs[0b011usize],
+            bbox_100 = aabbs[0b100usize],
+            bbox_101 = aabbs[0b101usize],
+            bbox_110 = aabbs[0b110usize],
+            bbox_111 = aabbs[0b111usize],
+            ptr_000 = self.children[0b000usize],
+            ptr_001 = self.children[0b001usize],
+            ptr_010 = self.children[0b010usize],
+            ptr_011 = self.children[0b011usize],
+            ptr_100 = self.children[0b100usize],
+            ptr_101 = self.children[0b101usize],
+            ptr_110 = self.children[0b110usize],
+            ptr_111 = self.children[0b111usize],
+        )
+    }
 }
 
 /// A "pointer" to a Node
@@ -132,6 +204,20 @@ impl NodePointer {
             info = info | 1u32.shl(31);
         }
         NodePointer { info: info }
+    }
+}
+
+impl fmt::Display for NodePointer {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.is_leaf() {
+            if self.is_empty_leaf() {
+                write!(f, "empty_leaf")
+            } else {
+                write!(f, "leaf: {}", self.index())
+            }
+        } else {
+            write!(f, "inner: {}", self.index())
+        }
     }
 }
 
@@ -459,8 +545,8 @@ impl Node {
         unsafe {
             Node {
                 bboxes: [
-                    [_mm256_set1_ps(std::f32::MAX); 3],
-                    [_mm256_set1_ps(std::f32::MIN); 3],
+                    [_mm256_set1_ps(std::f32::INFINITY); 3],
+                    [_mm256_set1_ps(std::f32::NEG_INFINITY); 3],
                 ],
                 children: [NodePointer::empty_leaf(); 8],
                 axis_top: 0u8,
@@ -473,17 +559,24 @@ impl Node {
         bvh_node: &BvhNodeConstructionRecord,
     ) -> (Self, [BvhNodeConstructionRecord; 8]) {
         let mut children: [BvhNodeConstructionRecord; 8] = Default::default();
-        let mut bboxes = [[[std::f32::MAX; 8]; 3], [[std::f32::MIN; 8]; 3]];
+        let mut bboxes = [
+            [[std::f32::INFINITY; 8]; 3],
+            [[std::f32::NEG_INFINITY; 8]; 3],
+        ];
         let mut this = Node::empty();
         Self::from_bvh_node_traverse(&mut this, &mut bboxes, &mut children, bvh_node, 0, 0);
-        this.bboxes = Self::convert_bboxes(&bboxes);
+        this.bboxes = Self::load_bboxes(&bboxes);
         (this, children)
     }
     // ToDo-research: Why using empty_bboxes_array_layout() in from_bvh_node() leads to segmentation fault
     // in release build?
+    // Node alignment.
     #[allow(dead_code)]
     fn empty_bboxes_array_layout() -> [[[f32; 8]; 3]; 2] {
-        [[[std::f32::MAX; 8]; 3], [[std::f32::MIN; 8]; 3]]
+        [
+            [[std::f32::INFINITY; 8]; 3],
+            [[std::f32::NEG_INFINITY; 8]; 3],
+        ]
     }
     fn from_bvh_node_traverse(
         &mut self,
@@ -545,11 +638,25 @@ impl Node {
             }
         }
     }
-    fn convert_bboxes(src: &[[[f32; 8]; 3]; 2]) -> [[__m256; 3]; 2] {
+    fn eight_aabb_from_array_layout(out: &mut [Aabb; 8], array: &[[[f32; 8]; 3]; 2]) {
+        // ToDo: write a test.
+        for min_max in 0..2 {
+            for axis in 0..3 {
+                for child_id in 0..8 {
+                    if min_max == 0 {
+                        out[child_id].min[axis] = array[0][axis][child_id]
+                    } else {
+                        out[child_id].max[axis] = array[1][axis][child_id]
+                    }
+                }
+            }
+        }
+    }
+    fn load_bboxes(src: &[[[f32; 8]; 3]; 2]) -> [[__m256; 3]; 2] {
         unsafe {
             let mut res = [
-                [_mm256_set1_ps(std::f32::MAX); 3],
-                [_mm256_set1_ps(std::f32::MIN); 3],
+                [_mm256_set1_ps(std::f32::INFINITY); 3],
+                [_mm256_set1_ps(std::f32::NEG_INFINITY); 3],
             ];
             for min_max in 0..2 {
                 for axis in 0..3 {
@@ -559,6 +666,21 @@ impl Node {
             res
         }
     }
+    fn store_bboxes(src: &[[__m256; 3]; 2]) -> [[[f32; 8]; 3]; 2] {
+        unsafe {
+            let mut res = [
+                [[std::f32::INFINITY; 8]; 3],
+                [[std::f32::NEG_INFINITY; 8]; 3],
+            ];
+            for min_max in 0..2 {
+                for axis in 0..3 {
+                    _mm256_store_ps(res[min_max][axis].as_mut_ptr(), src[min_max][axis]);
+                }
+            }
+            res
+        }
+    }
+    // ToDo: write a test.
 }
 
 impl OBVH {
@@ -622,10 +744,18 @@ impl OBVH {
 
 #[cfg(test)]
 mod tests {
+    use super::Node;
+    use super::OBVH;
+    use crate::hitable::bvh_node::BvhNode;
+    use crate::material::lambertian::Lambertian;
+    use crate::obj_file::ObjFile;
+    use crate::texture::constant::ConstantTexture;
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
     use std::arch::x86_64::*;
+    use std::path::Path;
+    use std::sync::Arc;
     #[test]
     fn load_and_movemask_order_compatibility() {
         unsafe {
@@ -637,5 +767,34 @@ mod tests {
             ));
             assert!(movemask == 0b00011111);
         }
+    }
+    #[test]
+    fn node_formatting() {
+        let node = Node::empty();
+        println!("{:?}", node);
+    }
+    #[test]
+    fn obvh_construction() {
+        let material = Arc::new(Lambertian::new(Arc::new(ConstantTexture::rgb(
+            1.0, 1.0, 1.0,
+        ))));
+        let obj = &mut ObjFile::from_file(Path::new("res/test.obj"))
+            .unwrap()
+            .groups[0];
+        let bvh_node = Arc::new(BvhNode::new(obj.to_triangles(material.clone()), 0.0, 1.0));
+        let obvh = Arc::new(OBVH::from_bvh_node(bvh_node));
+        println!("{:?}", obvh);
+    }
+}
+
+impl fmt::Debug for OBVH {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Num of leaf nodes: {}\n", self.leaves.len()).unwrap();
+        write!(f, "Num of inner nodes: {}\n", self.inners.len()).unwrap();
+        for i in 0..self.inners.len() {
+            let node = &self.inners[i];
+            write!(f, "\nnode[{}]\n{:?}\n", i, node).unwrap();
+        }
+        Ok(())
     }
 }
