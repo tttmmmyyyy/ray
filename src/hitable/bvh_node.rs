@@ -50,7 +50,7 @@ impl BvhNodeConstructionRecord {
 pub struct BvhNode {
     pub left: Arc<Hitable>,
     pub right: Arc<Hitable>,
-    pub axis: usize, // the index (0,1,2) of splitting plane // ToDo u8にする
+    pub axis: usize, // the index (0,1,2) of splitting plane
     pub aabb: Aabb,
     pub left_node_record: BvhNodeConstructionRecord,
     pub right_node_record: BvhNodeConstructionRecord,

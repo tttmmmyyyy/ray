@@ -47,20 +47,22 @@ pub struct OBVH {
 
 struct Node {
     // Each of 8 children is associated with a number called 'child_id' which is in [0..8).
-    // A Node is of an OBVH tree can be seen as a binary tree of depth 3, and in this perspective
+    // A Node of an OBVH tree can be seen as a binary tree of depth 3, and in this perspective
     // child_id & (1 << 0) != 0 <=> "Is this children in the left-half of the whole tree (of depth 3)?"
     // child_id & (1 << 1) != 0 <=> "Is this children in the left-half of the next subtree (of depth 2)?"
     // child_id & (1 << 2) != 0 <=> "Is this children in the left-half of the minimal subtree (of depth 1)?"
+    // At each inner node, the leaves blow are divided into two groups acccording to
+    // the value X=(center-of-bounding-box)[some-axis].
+    // The child with lesser X is called 'left' and one with greater X is called 'right'.
     //
     // When identifying __m256 and [f32; 8] (i.e., talking as if bboxes has type [[[f32; 8]; 3]; 2]),
     // then bboxes[min_or_max][axis][child_id] = min[0] or max[1] coordinate value
     // along the axis of the bbox of the child.
-    // ToDo: child_id の順番についてはかなり慎重にならなくてはならない。エンディアンとか気にするべきか？
     bboxes: [[__m256; 3]; 2],
     children: [NodePointer; 8],
-    axis_top: u8, // ToDo: add an explanation comment
-    axis_child: [u8; 2],
-    axis_grand_son: [u8; 4],
+    axis_top: u8,            // Axis dividing left-leaves and right-leaves.
+    axis_child: [u8; 2],     // axis_child[i] = axis dividing children with child_id % 2 == i
+    axis_grand_son: [u8; 4], // axis_child[i] = axis dividing children with child_id % 4 == i
 }
 
 /// A "pointer" to a Node
