@@ -11,7 +11,6 @@ use std::arch::x86_64::*;
 use std::ops::Shl;
 use std::ops::Shr;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 struct RayAVXInfo {
     origin: [__m256; 3],  // origin[axis_idx] = 8 copies of ray.origin[axis_idx]
@@ -132,10 +131,6 @@ impl NodePointer {
         }
         NodePointer { info: info }
     }
-}
-
-fn duration_to_secs(dur: &Duration) -> f64 {
-    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 0.001 + dur.subsec_nanos() as f64 * 0.000001
 }
 
 impl Hitable for OBVH {
@@ -622,16 +617,23 @@ impl OBVH {
     }
 }
 
-pub fn test_load_movemask_order_compatibility() {
-    unsafe {
-        let vec_a = _mm256_set1_ps(0.0);
-        let b_arr = [4.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0];
-        let vec_b = _mm256_load_ps(b_arr.as_ptr());
-        let movemask = _mm256_movemask_ps(_mm256_cmp_ps(
-            vec_a, vec_b, _CMP_LE_OS, /* Ordered, Signaling. */
-        ));
-        assert!(movemask == 0b00011111);
-        // assert!(movemask == 0b11111000);
+#[cfg(test)]
+mod tests {
+    #[cfg(target_arch = "x86")]
+    use std::arch::x86::*;
+    #[cfg(target_arch = "x86_64")]
+    use std::arch::x86_64::*;
+    #[test]
+    fn load_and_movemask_order_compatibility() {
+        unsafe {
+            let vec_a = _mm256_set1_ps(0.0);
+            let b_arr = [4.0, 3.0, 2.0, 1.0, 0.0, -1.0, -2.0, -3.0];
+            let vec_b = _mm256_load_ps(b_arr.as_ptr());
+            let movemask = _mm256_movemask_ps(_mm256_cmp_ps(
+                vec_a, vec_b, _CMP_LE_OS, /* Ordered, Signaling. */
+            ));
+            assert!(movemask == 0b00011111);
+        }
     }
 }
 

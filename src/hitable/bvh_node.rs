@@ -40,8 +40,8 @@ impl BvhNodeConstructionRecord {
     }
     pub fn bbox(&self) -> Aabb {
         match self {
-            BvhNodeConstructionRecord::Inner { ptr: _, bbox: bbox } => *bbox,
-            BvhNodeConstructionRecord::Leaf { ptr: _, bbox: bbox } => *bbox,
+            BvhNodeConstructionRecord::Inner { ptr: _, bbox } => *bbox,
+            BvhNodeConstructionRecord::Leaf { ptr: _, bbox } => *bbox,
         }
     }
 }

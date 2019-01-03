@@ -22,5 +22,6 @@ pub trait Material: Send + Sync {
     /// BRDF * cos(angle between scattered and rec.normal).
     // fn scattering_pdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32;
     /// ToDo: write a comment.
+    /// ToDo: rename ray, scattered
     fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3;
 }

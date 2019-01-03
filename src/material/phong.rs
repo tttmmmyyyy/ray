@@ -2,7 +2,6 @@ use crate::aliases::{RandGen, Vec3};
 use crate::hit_record::HitRecord;
 use crate::material::glass::reflect;
 use crate::material::Material;
-use crate::pdf::blinnphong::BlinnPhongPdf;
 use crate::pdf::cosine::CosineNPdf;
 use crate::pdf::cosine::CosinePdf;
 use crate::pdf::mixture::MixturePdfBox;
@@ -41,7 +40,7 @@ impl Phong {
 }
 
 impl Material for Phong {
-    fn scatter(&self, ray: &Ray, rec: &HitRecord, rng: &mut RandGen) -> Option<ScatterRecord> {
+    fn scatter(&self, ray: &Ray, rec: &HitRecord, _rng: &mut RandGen) -> Option<ScatterRecord> {
         let pdf = MixturePdfBox {
             mix: self.specular_importance_weight,
             a_pdf: Box::new(CosineNPdf::new(

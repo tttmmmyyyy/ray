@@ -1,4 +1,5 @@
 use crate::aliases::{Mat4, Vec3};
+use std::time::Duration;
 
 pub fn zipwith_vec3(lhs: &Vec3, rhs: &Vec3, zipper: impl Fn(f32, f32) -> f32) -> Vec3 {
     Vec3::new(
@@ -18,4 +19,8 @@ pub fn max_vec3(lhs: &Vec3, rhs: &Vec3) -> Vec3 {
 
 pub fn proj_transform(mat: &Mat4, pt: &Vec3) -> Vec3 {
     Vec3::from_homogeneous(mat * pt.to_homogeneous()).unwrap()
+}
+
+pub fn duration_to_secs(dur: &Duration) -> f64 {
+    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 1.0e-3 + dur.subsec_nanos() as f64 * 1.0e-6
 }

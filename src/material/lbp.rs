@@ -40,7 +40,7 @@ impl LBP {
 }
 
 impl Material for LBP {
-    fn scatter(&self, ray: &Ray, rec: &HitRecord, rng: &mut RandGen) -> Option<ScatterRecord> {
+    fn scatter(&self, ray: &Ray, rec: &HitRecord, _rng: &mut RandGen) -> Option<ScatterRecord> {
         let pdf = MixturePdfBox {
             mix: self.specular_importance_weight,
             a_pdf: Box::new(BlinnPhongPdf::new(

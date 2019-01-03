@@ -27,7 +27,7 @@ impl Material for DiffuseLight {
             Vec3::new(0.0, 0.0, 0.0)
         }
     }
-    fn brdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+    fn brdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord, _in_light: &Vec3) -> Vec3 {
         panic!("brdf called for Metal.")
     }
 }

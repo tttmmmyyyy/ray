@@ -4,10 +4,7 @@ use crate::scenes::ScenesType;
 use rand::prelude::Rng;
 use ray::aliases::Vec3;
 use ray::scene::Scene;
-#[cfg(target_arch = "x86")]
-use std::arch::x86::*;
-#[cfg(target_arch = "x86_64")]
-use std::arch::x86_64::*;
+use ray::util::duration_to_secs;
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
@@ -141,23 +138,6 @@ fn main() {
         duration_to_secs(&start_time.elapsed())
     );
     let rays_per_thread = RAYS_PER_PIXEL / THREAD_CNT;
-
-    // ToDo: remove
-    // {
-    //     let mut rng = rand::prelude::thread_rng();
-    //     for _ in 0..rays_per_thread {
-    //         for i in 0..IMAGE_WIDTH {
-    //             for j in 0..IMAGE_HEIGHT {
-    //                 let u = (i as f32 + rng.gen::<f32>()) / IMAGE_WIDTH as f32;
-    //                 let v = (j as f32 + rng.gen::<f32>()) / IMAGE_HEIGHT as f32;
-    //                 let ray = scene.camera.get_ray(u, v, &mut rng);
-    //                 let col = ray::calc_color(&ray, &scene, &mut rng, 50 /* depth */);
-    //                 // println!("end calc_color");
-    //             }
-    //         }
-    //     }
-    // }
-
     crossbeam::scope(|scope| {
         let (tx, cx) = channel::<ColorSum>();
         let mut opt_tx = Some(tx);
@@ -215,8 +195,4 @@ fn get_output_dir_if_exists(path: &Path) -> Option<&Path> {
             None
         }
     })
-}
-
-fn duration_to_secs(dur: &Duration) -> f32 {
-    dur.as_secs() as f32 + dur.subsec_millis() as f32 * 0.001
 }

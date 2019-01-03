@@ -6,7 +6,6 @@ use ray::background::AmbientLight;
 use ray::camera::Camera;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::cube;
-use ray::hitable::hitable_list::HitableList;
 use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;

@@ -1,6 +1,4 @@
 use rand;
-use rand::SeedableRng;
-use ray::affine::Affine;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
@@ -10,7 +8,6 @@ use ray::hitable::hitable_list::HitableList;
 use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
-use ray::hitable::transform::Transform;
 use ray::hitable::Hitable;
 use ray::material::diffuse_light::DiffuseLight;
 use ray::material::glass::Glass;
@@ -45,12 +42,12 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             &Vec3::new(2.5, 2.5, 2.5),
         )))),
     ))); // light
-    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
         0.5,
     )))));
-    let glass = Arc::new(Glass::new(2.2, 0.0));
+    let _glass = Arc::new(Glass::new(2.2, 0.0));
     let k = 0.5;
     let phong = Arc::new(Phong::new(
         Arc::new(ConstantTexture::rgb(

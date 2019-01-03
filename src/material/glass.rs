@@ -86,7 +86,7 @@ impl Material for Glass {
             })
         }
     }
-    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+    fn brdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord, _in_light: &Vec3) -> Vec3 {
         panic!("brdf called for Glass.")
     }
 }
