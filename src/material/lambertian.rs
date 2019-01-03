@@ -25,7 +25,7 @@ impl Material for Lambertian {
         Some(ScatterRecord {
             attenuation: self.albedo.value(&rec.tex_coord, &rec.point),
             important_dir: SingularPdf::Finite {
-                pdf: CosinePdf::boxed(&rec.normal),
+                pdf: Box::new(CosinePdf::new(&rec.normal)),
             },
         })
     }

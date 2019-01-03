@@ -1,3 +1,4 @@
+pub mod blinnphong;
 pub mod constant;
 pub mod cosine;
 pub mod hitable;
@@ -16,7 +17,7 @@ pub enum SingularPdf {
 /// Probability distribution function on directions
 pub trait Pdf {
     /// Probability density at a direction.
-    /// dir is not required to be normalized
+    /// * `dir` - not required to be normalized
     fn density(&self, dir: &Vec3) -> f32;
     /// Generates a radom direction following this pdf.
     fn generate(&self, rng: &mut RandGen) -> Vec3;
@@ -51,15 +52,26 @@ pub fn rnd_in_unit_disc(rnd_in_unit_disc: &mut RandGen) -> Vec2 {
 }
 
 /// Calculates a random point on a unit hemisphere (x^2+y^2+z^2=1, z>=0)
-/// such that pdf(d)/sin(t) ~= cos(t) where t is angle between d and n=(0,0,1)
+/// according to pdf(d) == cos(t) / pi, where t is angle between d and n=(0,0,1)
 pub fn random_cosine_direction(rng: &mut RandGen) -> Vec3 {
     let r0 = rng.gen::<f32>();
-    let rr0 = r0.sqrt();
-    let r1 = rng.gen::<f32>();
-    let angle = 2.0 * PI * r1;
     let z = (1.0 - r0).sqrt();
-    let x = angle.cos() * rr0;
-    let y = angle.sin() * rr0;
+    let r = r0.sqrt(); // = (1.0 - z.powi(2)).sqrt();
+    let angle = 2.0 * PI * rng.gen::<f32>();
+    let x = angle.cos() * r;
+    let y = angle.sin() * r;
+    Vec3::new(x, y, z)
+}
+
+/// Calculates a random point on a unit hemisphere (x^2+y^2+z^2=1, z>=0)
+/// according to pdf(d) == cos^n(t) / (normalize factor), where t is angle between d and n=(0,0,1)
+pub fn random_cosine_n_direction(n: i32, rng: &mut RandGen) -> Vec3 {
+    let r0 = rng.gen::<f32>();
+    let z = (1.0 - r0).powf(1.0 / (n as f32 + 1.0));
+    let r = (1.0 - z.powi(2)).sqrt();
+    let angle = 2.0 * PI * rng.gen::<f32>();
+    let x = angle.cos() * r;
+    let y = angle.sin() * r;
     Vec3::new(x, y, z)
 }
 

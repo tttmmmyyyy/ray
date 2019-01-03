@@ -7,7 +7,9 @@ use crate::ray::Ray;
 use crate::scatter_record::ScatterRecord;
 use rand::Rng;
 
+/// * `n` - must be normalized
 pub fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
+    debug_assert!((n.norm() - 1.0).abs() < 1e-3);
     v - 2.0 * v.dot(&n) * n
 }
 

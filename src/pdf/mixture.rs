@@ -52,3 +52,22 @@ impl<'a, 'b> Pdf for MixturePdf<'a, 'b> {
         }
     }
 }
+
+pub struct MixturePdfBox {
+    pub mix: f32,
+    pub a_pdf: Box<Pdf>,
+    pub b_pdf: Box<Pdf>,
+}
+
+impl Pdf for MixturePdfBox {
+    fn density(&self, dir: &Vec3) -> f32 {
+        self.mix * self.a_pdf.density(dir) + (1.0 - self.mix) * self.b_pdf.density(dir)
+    }
+    fn generate(&self, rng: &mut RandGen) -> Vec3 {
+        if rng.gen::<f32>() < self.mix {
+            self.a_pdf.generate(rng)
+        } else {
+            self.b_pdf.generate(rng)
+        }
+    }
+}

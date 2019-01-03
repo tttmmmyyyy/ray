@@ -15,7 +15,7 @@ use ray::hitable::Hitable;
 use ray::material::diffuse_light::DiffuseLight;
 use ray::material::glass::Glass;
 use ray::material::lambertian::Lambertian;
-use ray::material::lbp::LBP;
+use ray::material::phong::Phong;
 use ray::obj_file::ObjFile;
 use ray::scene::Scene;
 use ray::texture::checker::CheckerTexture;
@@ -52,7 +52,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     )))));
     let glass = Arc::new(Glass::new(2.2, 0.0));
     let k = 0.5;
-    let lbp = Arc::new(LBP::new(
+    let phong = Arc::new(Phong::new(
         Arc::new(ConstantTexture::rgb(
             k * 232.0 / 255.0,
             k * 200.0 / 255.0,
@@ -63,13 +63,14 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             (1.0 - k) * 1.0,
             (1.0 - k) * 1.0,
         )),
-        200,
+        50,
+        k,
     ));
     let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
         .unwrap()
         .groups[0];
     teapot.set_smooth_normals();
-    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(lbp.clone()), 0.0, 1.0));
+    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(phong.clone()), 0.0, 1.0));
     // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
     //     .unwrap()
     //     .groups[0];

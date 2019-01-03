@@ -1,8 +1,9 @@
-pub mod lbp;
 pub mod diffuse_light;
 pub mod glass;
 pub mod lambertian;
+pub mod lbp;
 pub mod metal;
+pub mod phong;
 
 use crate::aliases::{RandGen, Vec3};
 use crate::hit_record::HitRecord;
