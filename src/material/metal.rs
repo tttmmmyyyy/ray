@@ -33,11 +33,10 @@ impl Material for Metal {
             return None;
         }
         Some(ScatterRecord {
-            attenuation: self.albedo,
-            important_dir: SingularPdf::Delta { dir: reflected },
+            pdf: SingularPdf::Delta { dir: reflected },
         })
     }
-    fn brdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord, _in_light: &Vec3) -> Vec3 {
-        panic!("brdf called for Metal.")
+    fn brdf(&self, _ray: &Vec3, _scattered: &Vec3, _rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+        self.albedo.component_mul(in_light)
     }
 }

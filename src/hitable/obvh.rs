@@ -186,7 +186,8 @@ impl Hitable for OBVH {
 }
 
 impl Node {
-    /// ToDo: write a comment on the return value.
+    /// Calculates whether or not ray hits eight bounding boxes (bboxes) with SIMD.
+    /// * `return` - for i in [0..8), return & (1 << i) != 0 <=> the ray hits the i-th bbox.
     unsafe fn hit_core(&self, ray: &RayAVXInfo, t_min: f32, t_max: f32) -> i32 {
         let mut t_min = _mm256_set1_ps(t_min);
         let mut t_max = _mm256_set1_ps(t_max);
@@ -478,8 +479,8 @@ impl Node {
         this.bboxes = Self::convert_bboxes(&bboxes);
         (this, children)
     }
-    // ToDo-research: 上のfrom_bvh_node関数で let mut bboxes = Self::empty_bboxes_array_layout(); とすると、
-    // リリースビルドのときのみSegmentation faultが発生する。
+    // ToDo-research: Why using empty_bboxes_array_layout() in from_bvh_node() leads to segmentation fault
+    // in release build?
     #[allow(dead_code)]
     fn empty_bboxes_array_layout() -> [[[f32; 8]; 3]; 2] {
         [[[std::f32::MAX; 8]; 3], [[std::f32::MIN; 8]; 3]]
@@ -638,150 +639,3 @@ mod tests {
         }
     }
 }
-
-// #[cfg(all(
-//     any(target_arch = "x86", target_arch = "x86_64"),
-//     target_feature = "avx"
-// ))]
-// fn foo() {
-//     #[cfg(target_arch = "x86")]
-//     use std::arch::x86::_mm256_add_epi64;
-//     #[cfg(target_arch = "x86_64")]
-//     use std::arch::x86_64::_mm256_add_epi64;
-//     println!("foo");
-// }
-
-// pub fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> bool {
-//         let mut t_min_int = t_min; // int = intersection
-//         let mut t_max_int = t_max;
-//         for a in 0..3 {
-//             let inv_d = 1.0 / ray.direction[a];
-//             let mut t0 = ((self.min)[a] - ray.origin[a]) * inv_d;
-//             let mut t1 = ((self.max)[a] - ray.origin[a]) * inv_d;
-//             if inv_d < 0.0 {
-//                 std::mem::swap(&mut t0, &mut t1);
-//             }
-//             t_min_int = f32::max(t_min_int, t0);
-//             t_max_int = f32::min(t_max_int, t1);
-//             if t_min_int > t_max_int {
-//                 // 厚さ0のAAbbとはヒットする
-//                 return false;
-//             }
-//         }
-//         return true;
-//     }
-
-// pub fn from_bvh_node(bvh_node: Arc<BvhNode>) -> (Self, [BvhNodeConstructionRecord; 8]) {
-//     let mut children: [BvhNodeConstructionRecord; 8] = Default::default();
-//     let mut bboxes = [[[std::f32::MAX; 8]; 3], [[std::f32::MIN; 8]; 3]];
-//     let mut self = Node::empty();
-
-//     let mut axis_top = 0u8;
-//     let mut axis_child = [0u8; 2];
-//     let mut axis_grand_son = [0u8; 4];
-//     // bboxes: [[__m256; 3]; 2],
-//     // children: [NodePointer; 8],
-//     // axis_top: u8, // ToDo: add an explanation comment
-//     // axis_child: [u8; 2],
-//     // axis_grand_son: [u8; 4],
-
-//     for child_id in 0..8 {
-//         let mut axises = [0u8; 3];
-//         let child = Self::get_great_grandchild(bvh_node.clone(), child_id as u8, &mut axises);
-//         axis_top = axises[0];
-//         axis_child[child_id % 2] = axises[1];
-//         axis_grand_son[child_id % 4] = axises[2];
-//         // Note: node.axis_* are set more times than needed,
-//         // so this logic is not best, but works well enough.
-//         for min_max in 0..2 {
-//             for axis in 0..3 {
-//                 if min_max == 0 {
-//                     bboxes[min_max][axis][child_id] = child.bbox().min[axis];
-//                 } else {
-//                     bboxes[min_max][axis][child_id] = child.bbox().max[axis];
-//                 }
-//             }
-//         }
-//         children[child_id] = child;
-//     }
-//     (
-//         Node {
-//             bboxes: Self::convert_bboxes(&bboxes),
-//             children: [NodePointer::empty_leaf(); 8],
-//             axis_top: axis_top,
-//             axis_child: axis_child,
-//             axis_grand_son: axis_grand_son,
-//         },
-//         children,
-//     )
-// }
-
-// fn get_great_grandchild(
-//     bvh_node: Arc<BvhNode>,
-//     child_id: u8,
-//     axises: &mut [u8; 3], // top, child, grandson
-// ) -> BvhNodeConstructionRecord {
-//     Self::dig_to_child_node(bvh_node, child_id, 0, axises)
-// }
-// fn dig_to_child_node(
-//     bvh_node: Arc<BvhNode>,
-//     child_id: u8, // ToDo: やはり u8 に統一した方が良いか。統一する。
-//     depth: u8,
-//     axises: &mut [u8; 3], // top, child, grandson
-// ) -> BvhNodeConstructionRecord {
-//     debug_assert!(depth <= 3);
-//     if depth == 3 {
-//         BvhNodeConstructionRecord::inner(bvh_node)
-//     } else {
-//         axises[depth as usize] = bvh_node.axis as u8;
-//         let const_rec = if child_id & 1u8.shl(depth) == 0u8 {
-//             &bvh_node.left_node_record
-//         } else {
-//             &bvh_node.right_node_record
-//         };
-//         match const_rec {
-//             BvhNodeConstructionRecord::Inner {
-//                 ptr: inner,
-//                 bbox: _,
-//             } => Self::dig_to_child_node(inner.clone(), child_id, depth + 1, axises),
-//             _ => const_rec.clone(),
-//         }
-//     }
-// }
-
-// let mut debug_node = Node::empty();
-// let mut bboxes = [[[0.0f32; 8]; 3]; 2];
-// Node::set_bboxes_array_layout(
-//     &mut bboxes,
-//     0,
-//     &Aabb::new(&Vec3::new(-1.0, -1.0, -1.0), &Vec3::new(1.0, 1.0, 1.0)),
-// );
-// debug_node.bboxes = Node::convert_bboxes(&bboxes);
-// let debug_ray_avx = RayAVXInfo::from_ray(&Ray::new(
-//     &Vec3::new(-2.0, -2.0, -2.0),
-//     &Vec3::new(1.0, 1.0, 1.0),
-//     0.0,
-// ));
-// // ToDo: remove
-// for min_max in 0..2 {
-//     for axis in 0..3 {
-//         let mut bboxes_at_child = [0.0f32; 8];
-//         unsafe {
-//             _mm256_store_ps(
-//                 bboxes_at_child.as_mut_ptr(),
-//                 debug_node.bboxes[min_max][axis],
-//             );
-//         }
-//         println!(
-//             "min_max: {}, axis: {}, src: {:?}, res: {:?}",
-//             min_max, axis, bboxes[min_max][axis], bboxes_at_child
-//         );
-//     }
-// }
-// println!("{:b}", debug_node.hit(&debug_ray_avx, 0.0, std::f32::MAX));
-// // println!("{}, {}", t_min, t_max); // ToDo: たまにt_maxが大きな数になっているので確認する。
-
-// Or,
-// self.push_node_stack_core(node_stack, ray, hit_bits, 0, 0)
-// Or,
-// manually inlining this, ...

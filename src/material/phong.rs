@@ -50,23 +50,22 @@ impl Material for Phong {
             b_pdf: Box::new(CosinePdf::new(&rec.normal)),
         };
         Some(ScatterRecord {
-            attenuation: Vec3::new(0.0, 0.0, 0.0), // ToDo: remove attenuation field from ScatterRecord
-            important_dir: SingularPdf::Finite { pdf: Box::new(pdf) },
+            pdf: SingularPdf::Finite { pdf: Box::new(pdf) },
         })
     }
     fn emitted(&self, _ray_in: &Ray, _rec: &HitRecord) -> Vec3 {
         Vec3::new(0.0, 0.0, 0.0)
     }
-    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+    fn brdf(&self, in_ray: &Vec3, out_ray: &Vec3, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
         let diffuse = (1.0 / PI)
             * self
                 .diffuse_coef
                 .value(&rec.tex_coord, &rec.point)
                 .component_mul(in_light);
         let specular = self.specular_normalizer
-            * reflect(&ray.direction, &rec.normal)
+            * reflect(in_ray, &rec.normal)
                 .normalize()
-                .dot(&scattered.direction.normalize())
+                .dot(&out_ray.normalize())
                 .powf(self.exponent as f32)
             * self
                 .specular_coef

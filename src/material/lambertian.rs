@@ -23,14 +23,12 @@ impl Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, _ray: &Ray, rec: &HitRecord, _rng: &mut RandGen) -> Option<ScatterRecord> {
         Some(ScatterRecord {
-            attenuation: self.albedo.value(&rec.tex_coord, &rec.point),
-            important_dir: SingularPdf::Finite {
+            pdf: SingularPdf::Finite {
                 pdf: Box::new(CosinePdf::new(&rec.normal)),
             },
         })
     }
-    // ToDo: ScatterRecord から albedo を削除する。
-    fn brdf(&self, _ray: &Ray, _scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+    fn brdf(&self, _in_ray: &Vec3, _out_ray: &Vec3, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
         ((1.0 / PI) * self.albedo.value(&rec.tex_coord, &rec.point)).component_mul(in_light)
     }
 }

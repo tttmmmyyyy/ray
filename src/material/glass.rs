@@ -71,8 +71,7 @@ impl Material for Glass {
                 refracted += self.fuziness * rnd_in_unit_sphere(rng);
             }
             Some(ScatterRecord {
-                attenuation: Vec3::new(1.0, 1.0, 1.0),
-                important_dir: SingularPdf::Delta { dir: refracted },
+                pdf: SingularPdf::Delta { dir: refracted },
             })
         } else {
             let mut reflected = reflect(&ray.direction, &n);
@@ -81,12 +80,11 @@ impl Material for Glass {
                 reflected += self.fuziness * rnd_in_unit_sphere(rng);
             }
             Some(ScatterRecord {
-                attenuation: Vec3::new(1.0, 1.0, 1.0),
-                important_dir: SingularPdf::Delta { dir: reflected },
+                pdf: SingularPdf::Delta { dir: reflected },
             })
         }
     }
-    fn brdf(&self, _ray: &Ray, _scattered: &Ray, _rec: &HitRecord, _in_light: &Vec3) -> Vec3 {
-        panic!("brdf called for Glass.")
+    fn brdf(&self, _in_ray: &Vec3, _out_ray: &Vec3, _rec: &HitRecord, in_light: &Vec3) -> Vec3 {
+        *in_light
     }
 }

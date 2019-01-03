@@ -14,7 +14,6 @@ impl BlinnPhongPdf {
     /// * `normal` - need not be normalized.
     /// * `in_ray_dir` - need not be normalized.
     pub fn new(exponent: i32, normal: &Vec3, in_ray_dir: &Vec3) -> Self {
-        // ToDo move to material
         Self {
             in_ray_dir: in_ray_dir.normalize(),
             cosn_pdf: CosineNPdf::new(normal, exponent),

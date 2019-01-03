@@ -18,10 +18,8 @@ pub trait Material: Send + Sync {
     fn emitted(&self, _ray_in: &Ray, _rec: &HitRecord) -> Vec3 {
         Vec3::new(0.0, 0.0, 0.0)
     }
-    /// A characteristic function of scattering process.
-    /// BRDF * cos(angle between scattered and rec.normal).
-    // fn scattering_pdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord) -> f32;
-    /// ToDo: write a comment.
-    /// ToDo: rename ray, scattered
-    fn brdf(&self, ray: &Ray, scattered: &Ray, rec: &HitRecord, in_light: &Vec3) -> Vec3;
+    /// RGB component-wise BRDF function
+    /// * `in_ray` - the direction (not normalized) of the incoming ray carrying outgoing light.
+    /// * `out_ray` - the direction (not normalized) of the outgoing ray carrying incoming light.
+    fn brdf(&self, in_ray: &Vec3, out_ray: &Vec3, rec: &HitRecord, in_light: &Vec3) -> Vec3;
 }
