@@ -86,11 +86,12 @@ impl BvhNode {
             .map(|h| h.bounding_box(time_0, time_1).unwrap())
             .collect();
         let (axis, idx) = Self::search_splitting_axis_index(&mut bboxes);
-        let (left, left_rec, right, right_rec): (
+        let (left, left_rec, right, right_rec, sep_axis): (
             Arc<Hitable>,
             BvhNodeConstructionRecord,
             Arc<Hitable>,
             BvhNodeConstructionRecord,
+            u8,
         ) = if idx == 0 {
             // if (left, right) = (empty, whole) achieves min cost,
             debug_assert!(list.len() >= 2);
@@ -100,29 +101,48 @@ impl BvhNode {
                 BvhNodeConstructionRecord::leaf(left_node, time_0, time_1),
                 Arc::new(Empty::new()),
                 BvhNodeConstructionRecord::empty(),
+                0,
             )
         } else {
             Self::sort_hitables_center(&mut list, axis, time_0, time_1);
             let right_list = list.split_off(idx);
             let left = Arc::new(BvhNode::new(list, time_0, time_1));
+            let left_rec = BvhNodeConstructionRecord::inner(left.clone());
             let right = Arc::new(BvhNode::new(right_list, time_0, time_1));
+            let right_rec = BvhNodeConstructionRecord::inner(right.clone());
+            let sep_axis = axis as u8;
+            // let sep_axis = left_rec.bbox().most_separating_axis(&right_rec.bbox());
+            // if left_rec.bbox().center()[sep_axis as usize]
+            //     <= right_rec.bbox().center()[sep_axis as usize]
+            // {
             (
                 left.clone(),
-                BvhNodeConstructionRecord::inner(left),
+                left_rec.clone(),
                 right.clone(),
-                BvhNodeConstructionRecord::inner(right),
+                right_rec.clone(),
+                sep_axis,
             )
+            // } else {
+            //     (
+            //         right.clone(),
+            //         right_rec.clone(),
+            //         left.clone(),
+            //         left_rec.clone(),
+            //         sep_axis,
+            //     )
+            // }
         };
         let left_box = left.bounding_box(time_0, time_1).unwrap();
         let right_box = right.bounding_box(time_0, time_1).unwrap();
         let self_box = Aabb::unite(&left_box, &right_box);
+        // println!("[BvhNode::new] sep_axis = {}", sep_axis);
         BvhNode {
             left: left,
             left_node_record: left_rec,
             right: right,
             right_node_record: right_rec,
+            axis: sep_axis as usize,
             aabb: self_box,
-            axis: axis,
         }
     }
     /// returns (axis, index).

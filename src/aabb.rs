@@ -1,7 +1,8 @@
 use crate::affine::Affine;
-use crate::aliases::Vec3;
+use crate::aliases::{Vec2, Vec3};
 use crate::ray::Ray;
-use crate::util::{max_vec3, min_vec3};
+use crate::util::{compare_vec2_le, compare_vec3_le};
+use crate::util::{max_vec2, max_vec3, min_vec2, min_vec3};
 use itertools::iproduct;
 use std;
 use std::default;
@@ -57,6 +58,16 @@ impl default::Default for Aabb {
 
 impl Aabb {
     pub fn new(min: &Vec3, max: &Vec3) -> Self {
+        debug_assert!(
+            compare_vec3_le(&min, &max)
+                || (*min == Vec3::new(std::f32::INFINITY, std::f32::INFINITY, std::f32::INFINITY)
+                    && *max
+                        == Vec3::new(
+                            std::f32::NEG_INFINITY,
+                            std::f32::NEG_INFINITY,
+                            std::f32::NEG_INFINITY,
+                        ))
+        );
         Aabb {
             min: *min,
             max: *max,
@@ -155,6 +166,116 @@ impl Aabb {
             .unwrap_or(std::cmp::Ordering::Equal)
     }
     pub fn center(&self) -> Vec3 {
+        debug_assert!(!self.is_empty());
         0.5 * (self.min + self.max)
+    }
+    pub fn intersect(&self, rhs: &Aabb) -> Aabb {
+        let mn = max_vec3(&self.min, &rhs.min);
+        let mx = min_vec3(&self.max, &rhs.max);
+        // Node: operator <= is 'using column-major lexicographic ordering.', so inappropriate
+        if compare_vec3_le(&mn, &mx) {
+            Aabb::new(&mn, &mx)
+        } else {
+            Aabb::empty()
+        }
+    }
+    /// Gets an axis (0,1,2) along which this aabb is shortest.
+    /// * `return` - if self is empty(), returns 0
+    pub fn shortest_axis(&self) -> u8 {
+        if self.is_empty() {
+            0
+        } else {
+            let diag = self.max - self.min;
+            let mut min_axis = 0u8;
+            let mut min_val = std::f32::INFINITY;
+            for a in 0..3 {
+                if diag[a] < min_val {
+                    min_val = diag[a];
+                    min_axis = a as u8;
+                }
+            }
+            min_axis
+        }
+    }
+    pub fn most_separating_axis(&self, rhs: &Aabb) -> u8 {
+        if self.is_empty() || rhs.is_empty() {
+            return 0;
+        }
+        let int_box = self.intersect(rhs);
+        if int_box.is_empty() {
+            let mut max_overlap = std::f32::NEG_INFINITY;
+            let mut best_axis = 0;
+            for a in 0..3 {
+                let overlap = self.project(a).intersect(&rhs.project(a)).area();
+                if overlap > max_overlap {
+                    max_overlap = overlap;
+                    best_axis = a;
+                }
+            }
+            best_axis
+        } else {
+            int_box.shortest_axis()
+        }
+    }
+    pub fn project(&self, axis: u8) -> Aabb2 {
+        let mut indices: Vec<usize> = vec![];
+        for a in 0..3 {
+            if a == axis {
+                continue;
+            } else {
+                indices.push(a as usize);
+            }
+        }
+        Aabb2::new(
+            &Vec2::new(self.min[indices[0]], self.min[indices[1]]),
+            &Vec2::new(self.max[indices[0]], self.max[indices[1]]),
+        )
+    }
+}
+
+/// Two-dimensional axis-aligned bounding box.
+pub struct Aabb2 {
+    pub min: Vec2,
+    pub max: Vec2,
+}
+
+impl Aabb2 {
+    pub fn new(min: &Vec2, max: &Vec2) -> Self {
+        debug_assert!(
+            compare_vec2_le(&min, &max)
+                || (*min == Vec2::new(std::f32::INFINITY, std::f32::INFINITY)
+                    && *max == Vec2::new(std::f32::NEG_INFINITY, std::f32::NEG_INFINITY))
+        );
+        Aabb2 {
+            min: *min,
+            max: *max,
+        }
+    }
+    pub fn empty() -> Self {
+        Aabb2::new(
+            &Vec2::new(std::f32::INFINITY, std::f32::INFINITY),
+            &Vec2::new(std::f32::NEG_INFINITY, std::f32::NEG_INFINITY),
+        )
+    }
+    pub fn is_empty(&self) -> bool {
+        self.min == Vec2::new(std::f32::INFINITY, std::f32::INFINITY)
+            && self.max == Vec2::new(std::f32::NEG_INFINITY, std::f32::NEG_INFINITY)
+    }
+    pub fn area(&self) -> f32 {
+        if self.is_empty() {
+            0.0
+        } else {
+            let diag = self.max - self.min;
+            diag[0] * diag[1]
+        }
+    }
+    pub fn intersect(&self, rhs: &Aabb2) -> Aabb2 {
+        let mn = max_vec2(&self.min, &rhs.min);
+        let mx = min_vec2(&self.max, &rhs.max);
+        if compare_vec2_le(&mn, &mx) {
+            Aabb2::new(&mn, &mx)
+        } else {
+            Aabb2::empty()
+        }
     }
 }
