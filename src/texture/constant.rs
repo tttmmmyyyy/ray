@@ -4,7 +4,6 @@ use crate::texture::Texture;
 pub struct ConstantTexture(Vec3);
 
 impl ConstantTexture {
-    // ToDo: rename to from_vec
     pub fn new(color: &Vec3) -> Self {
         ConstantTexture { 0: *color }
     }
