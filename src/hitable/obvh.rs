@@ -237,15 +237,10 @@ impl fmt::Display for NodePointer {
 
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
-        // let start_time = Instant::now();
-
         let ray_avx = RayAVXInfo::from_ray(ray);
         let mut node_stack = NodeStack::empty();
         node_stack.push(NodePointer::root());
         let mut hit_record: Option<HitRecord<'s>> = None;
-
-        // println!("prepare: {}", duration_to_secs(&start_time.elapsed()));
-
         while !node_stack.is_empty() {
             let node_ptr = node_stack.pop();
             if node_ptr.is_leaf() {
@@ -269,9 +264,6 @@ impl Hitable for OBVH {
                 debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
             }
         }
-
-        // println!("total: {}", duration_to_secs(&start_time.elapsed()));
-
         hit_record
     }
     fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
@@ -317,10 +309,6 @@ impl Node {
     }
     #[inline(always)]
     fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
-        self.push_node_stack_depth0(node_stack, ray, hit_bits);
-    }
-    #[inline(always)]
-    fn push_node_stack_depth0(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
         let mut child_id = 0usize;
         let mut sign = ray.dir_sign[self.axis_top];
         child_id ^= (sign).shl(0);

@@ -40,7 +40,10 @@ impl<'a> HitRecord<'a> {
             *a
         }
     }
-    pub fn replace_to_some_min<'s>(dst: &mut Option<HitRecord<'s>>, src: &Option<HitRecord<'s>>) {
+    pub fn replace_to_some_min<'s, 't: 's>(
+        dst: &mut Option<HitRecord<'s>>,
+        src: &Option<HitRecord<'s>>,
+    ) {
         if src.is_none() {
             return;
         }
