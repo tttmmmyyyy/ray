@@ -42,14 +42,14 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             &Vec3::new(2.5, 2.5, 2.5),
         )))),
     ))); // light
-    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
         0.5,
     )))));
     let _glass = Arc::new(Glass::new(2.2, 0.0));
     let k = 0.5;
-    let phong = Arc::new(Phong::new(
+    let _phong = Arc::new(Phong::new(
         Arc::new(ConstantTexture::rgb(
             k * 232.0 / 255.0,
             k * 200.0 / 255.0,
@@ -67,7 +67,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         .unwrap()
         .groups[0];
     teapot.set_smooth_normals();
-    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(phong.clone()), 0.0, 1.0));
+    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
     // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
     //     .unwrap()
     //     .groups[0];

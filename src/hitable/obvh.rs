@@ -13,15 +13,29 @@ use std::ops::Shl;
 use std::ops::Shr;
 use std::sync::Arc;
 
+#[repr(align(32))]
+struct BBoxesArray([[[f32; 8]; 3]; 2]);
+
+impl BBoxesArray {
+    fn empty() -> Self {
+        Self {
+            0: [
+                [[std::f32::INFINITY; 8]; 3],
+                [[std::f32::NEG_INFINITY; 8]; 3],
+            ],
+        }
+    }
+}
+
 struct RayAVXInfo {
     origin: [__m256; 3],  // origin[axis_idx] = 8 copies of ray.origin[axis_idx]
     inv_dir: [__m256; 3], // origin[axis_idx] = 8 copies of 1.0 / ray.direction[axis_idx]
-    dir_sign: [u8; 3], // dir_sign[axis_idx] = 0 (resp. 1) if ray.direction[axis_idx] >= 0 (resp. < 0)
+    dir_sign: [usize; 3], // dir_sign[axis_idx] = 1 (resp. 0) if ray.direction[axis_idx] >= 0 (resp. < 0)
 }
 
 impl RayAVXInfo {
     fn from_ray(ray: &Ray) -> Self {
-        let calc_sign = |axis| (ray.direction[axis] < 0.0) as u8;
+        let calc_sign = |axis| (ray.direction[axis] >= 0.0) as usize;
         unsafe {
             Self {
                 origin: [
@@ -61,9 +75,9 @@ struct Node {
     // along the axis of the bbox of the child.
     bboxes: [[__m256; 3]; 2],
     children: [NodePointer; 8],
-    axis_top: u8,            // Axis dividing left-leaves and right-leaves.
-    axis_child: [u8; 2],     // axis_child[i] = axis dividing children with child_id % 2 == i
-    axis_grand_son: [u8; 4], // axis_child[i] = axis dividing children with child_id % 4 == i
+    axis_top: usize,            // Axis dividing left-leaves and right-leaves.
+    axis_child: [usize; 2],     // axis_child[i] = axis dividing children with child_id % 2 == i
+    axis_grand_son: [usize; 4], // axis_child[i] = axis dividing children with child_id % 4 == i
 }
 
 impl fmt::Debug for Node {
@@ -283,14 +297,14 @@ impl Node {
                 t_min,
                 _mm256_mul_ps(
                     ray.inv_dir[a],
-                    _mm256_sub_ps(self.bboxes[ray.dir_sign[a] as usize][a], ray.origin[a]),
+                    _mm256_sub_ps(self.bboxes[1 - ray.dir_sign[a]][a], ray.origin[a]),
                 ),
             );
             t_max = _mm256_min_ps(
                 t_max,
                 _mm256_mul_ps(
                     ray.inv_dir[a],
-                    _mm256_sub_ps(self.bboxes[1 - ray.dir_sign[a] as usize][a], ray.origin[a]),
+                    _mm256_sub_ps(self.bboxes[ray.dir_sign[a]][a], ray.origin[a]),
                 ),
             );
         }
@@ -303,251 +317,58 @@ impl Node {
     }
     #[inline(always)]
     fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
-        self.push_node_stack_depth0(node_stack, ray, hit_bits, 0);
-        // self.push_node_stack_recursive(node_stack, ray, hit_bits, 0, 0);
-        // self.push_node_stack_inlined(node_stack, ray, hit_bits);
+        self.push_node_stack_depth0(node_stack, ray, hit_bits);
     }
     #[inline(always)]
-    fn push_node_stack_depth0(
-        &self,
-        node_stack: &mut NodeStack,
-        ray: &RayAVXInfo,
-        hit_bits: u8,
-        child_id: u8,
-    ) {
-        let axis = self.axis_top;
-        let sign = ray.dir_sign[axis as usize];
-        self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id ^ ((1 - sign).shl(0)));
-        self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id ^ (sign.shl(0)));
-        // if ray.dir_sign[axis as usize] > 0 {
-        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
-        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
-        // } else {
-        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id | 1u8.shl(0));
-        //     self.push_node_stack_depth1(node_stack, ray, hit_bits, child_id);
-        // }
-    }
-    #[inline(always)]
-    fn push_node_stack_depth1(
-        &self,
-        node_stack: &mut NodeStack,
-        ray: &RayAVXInfo,
-        hit_bits: u8,
-        child_id: u8,
-    ) {
-        let axis = self.axis_child[child_id as usize];
-        let sign = ray.dir_sign[axis as usize];
-        self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id ^ ((1 - sign).shl(1)));
-        self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id ^ (sign.shl(1)));
-        // if ray.dir_sign[axis as usize] > 0 {
-        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
-        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
-        // } else {
-        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id | 1u8.shl(1));
-        //     self.push_node_stack_depth2(node_stack, ray, hit_bits, child_id);
-        // }
-    }
-    #[inline(always)]
-    fn push_node_stack_depth2(
-        &self,
-        node_stack: &mut NodeStack,
-        ray: &RayAVXInfo,
-        hit_bits: u8,
-        child_id: u8,
-    ) {
-        let axis = self.axis_grand_son[child_id as usize];
-        let sign = ray.dir_sign[axis as usize];
-        self.push_node_stack_depth3(node_stack, hit_bits, child_id ^ ((1 - sign).shl(2)));
-        self.push_node_stack_depth3(node_stack, hit_bits, child_id ^ (sign.shl(2)));
-        // if ray.dir_sign[axis as usize] > 0 {
-        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id);
-        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
-        // } else {
-        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id | 1u8.shl(2));
-        //     self.push_node_stack_depth3(node_stack, hit_bits, child_id);
-        // }
-    }
-    #[inline(always)]
-    fn push_node_stack_depth3(&self, node_stack: &mut NodeStack, hit_bits: u8, child_id: u8) {
+    fn push_node_stack_depth0(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
+        let mut child_id = 0usize;
+        let mut sign = ray.dir_sign[self.axis_top];
+        child_id ^= (sign).shl(0);
+        sign = ray.dir_sign[self.axis_child[child_id]];
+        child_id ^= (sign).shl(1);
+        sign = ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= (sign).shl(2);
         if hit_bits & (1u8.shl(child_id)) != 0 {
-            // if this node hits the ray
-            node_stack.push(self.children[child_id as usize]);
+            node_stack.push(self.children[child_id]);
         }
-    }
-    #[allow(dead_code)]
-    fn push_node_stack_recursive(
-        &self,
-        node_stack: &mut Vec<NodePointer>,
-        ray: &RayAVXInfo,
-        hit_bits: i32,
-        depth: i32,
-        child_id: usize,
-    ) {
-        debug_assert!(depth <= 3);
-        if depth <= 2 {
-            let axis = if depth == 0 {
-                debug_assert!(child_id < 1);
-                self.axis_top
-            } else if depth == 1 {
-                debug_assert!(child_id < 2);
-                self.axis_child[child_id]
-            } else {
-                debug_assert!(child_id < 4);
-                self.axis_grand_son[child_id]
-            };
-            let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(depth));
-            if ray.dir_sign[axis as usize] > 0 {
-                // if ray is pointing negative,
-                std::mem::swap(&mut fst, &mut snd)
-            }
-            self.push_node_stack_recursive(node_stack, ray, hit_bits, depth + 1, snd);
-            self.push_node_stack_recursive(node_stack, ray, hit_bits, depth + 1, fst);
-        } else {
-            debug_assert!(child_id < 8);
-            if hit_bits & (1i32.shl(child_id)) != 0 {
-                // if this node hits the ray
-                node_stack.push(self.children[child_id]);
-            }
+        child_id ^= 0b100;
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
         }
-    }
-    #[allow(dead_code)]
-    #[inline(always)]
-    fn push_node_stack_inlined(
-        &self,
-        node_stack: &mut Vec<NodePointer>,
-        ray: &RayAVXInfo,
-        hit_bits: i32,
-    ) {
-        let child_id: usize = 0;
-        let axis = self.axis_top;
-        let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(0));
-        if ray.dir_sign[axis as usize] > 0 {
-            // if ray is pointing negative,
-            std::mem::swap(&mut fst, &mut snd)
+        child_id &= 0b011;
+        child_id ^= 0b010;
+        sign = ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= (sign).shl(2);
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
         }
-        {
-            // self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, snd);
-            let child_id: usize = snd;
-            let axis = self.axis_child[child_id];
-            let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
-            if ray.dir_sign[axis as usize] > 0 {
-                // if ray is pointing negative,
-                std::mem::swap(&mut fst, &mut snd)
-            }
-            {
-                // self.push_node_stack_core(node_stack, ray, hit_bits, 2, snd);
-                let child_id: usize = snd;
-                let axis = self.axis_grand_son[child_id];
-                let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
-                if ray.dir_sign[axis as usize] > 0 {
-                    // if ray is pointing negative,
-                    std::mem::swap(&mut fst, &mut snd)
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
-                    let child_id: usize = snd;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
-                    let child_id: usize = fst;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-            }
-            {
-                // self.push_node_stack_core(node_stack, ray, hit_bits, 2, fst);
-                let child_id: usize = fst;
-                let axis = self.axis_grand_son[child_id];
-                let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
-                if ray.dir_sign[axis as usize] > 0 {
-                    // if ray is pointing negative,
-                    std::mem::swap(&mut fst, &mut snd)
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
-                    let child_id: usize = snd;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
-                    let child_id: usize = fst;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-            }
+        child_id ^= 0b100;
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
         }
-        {
-            // self.push_node_stack_core(node_stack, ray, hit_bits, depth + 1, fst);
-            let child_id: usize = fst;
-            let axis = self.axis_child[child_id];
-            let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(1));
-            if ray.dir_sign[axis as usize] > 0 {
-                // if ray is pointing negative,
-                std::mem::swap(&mut fst, &mut snd)
-            }
-            {
-                // self.push_node_stack_core(node_stack, ray, hit_bits, 2, snd);
-                let child_id: usize = snd;
-                let axis = self.axis_grand_son[child_id];
-                let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
-                if ray.dir_sign[axis as usize] > 0 {
-                    // if ray is pointing negative,
-                    std::mem::swap(&mut fst, &mut snd)
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
-                    let child_id: usize = snd;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
-                    let child_id: usize = fst;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-            }
-            {
-                // self.push_node_stack_core(node_stack, ray, hit_bits, 2, fst);
-                let child_id: usize = fst;
-                let axis = self.axis_grand_son[child_id];
-                let (mut fst, mut snd) = (child_id, child_id | 1usize.shl(2));
-                if ray.dir_sign[axis as usize] > 0 {
-                    // if ray is pointing negative,
-                    std::mem::swap(&mut fst, &mut snd)
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, snd);
-                    let child_id: usize = snd;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-                {
-                    // self.push_node_stack_core(node_stack, ray, hit_bits, 3, fst);
-                    let child_id: usize = fst;
-                    if hit_bits & (1i32.shl(child_id)) != 0 {
-                        // if this node hits the ray
-                        node_stack.push(self.children[child_id]);
-                    }
-                }
-            }
+        child_id &= 0b001;
+        child_id ^= 0b001;
+        sign = ray.dir_sign[self.axis_child[child_id]];
+        child_id ^= (sign).shl(1);
+        sign = ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= (sign).shl(2);
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
+        }
+        child_id ^= 0b100;
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
+        }
+        child_id &= 0b011;
+        child_id ^= 0b010;
+        sign = ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= (sign).shl(2);
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
+        }
+        child_id ^= 0b100;
+        if hit_bits & (1u8.shl(child_id)) != 0 {
+            node_stack.push(self.children[child_id]);
         }
     }
     fn empty() -> Self {
@@ -558,9 +379,9 @@ impl Node {
                     [_mm256_set1_ps(std::f32::NEG_INFINITY); 3],
                 ],
                 children: [NodePointer::empty_leaf(); 8],
-                axis_top: 0u8,
-                axis_child: [0u8; 2],
-                axis_grand_son: [0u8; 4],
+                axis_top: 0,
+                axis_child: [0; 2],
+                axis_grand_son: [0; 4],
             }
         }
     }
@@ -568,28 +389,15 @@ impl Node {
         bvh_node: &BvhNodeConstructionRecord,
     ) -> (Self, [BvhNodeConstructionRecord; 8]) {
         let mut children: [BvhNodeConstructionRecord; 8] = Default::default();
-        let mut bboxes = [
-            [[std::f32::INFINITY; 8]; 3],
-            [[std::f32::NEG_INFINITY; 8]; 3],
-        ];
+        let mut bboxes = BBoxesArray::empty();
         let mut this = Node::empty();
         Self::from_bvh_node_traverse(&mut this, &mut bboxes, &mut children, bvh_node, 0, 0);
         this.bboxes = Self::load_bboxes(&bboxes);
         (this, children)
     }
-    // ToDo-research: Why using empty_bboxes_array_layout() in from_bvh_node() leads to segmentation fault
-    // in release build?
-    // Node alignment.
-    #[allow(dead_code)]
-    fn empty_bboxes_array_layout() -> [[[f32; 8]; 3]; 2] {
-        [
-            [[std::f32::INFINITY; 8]; 3],
-            [[std::f32::NEG_INFINITY; 8]; 3],
-        ]
-    }
     fn from_bvh_node_traverse(
         &mut self,
-        bboxes: &mut [[[f32; 8]; 3]; 2],
+        bboxes: &mut BBoxesArray,
         children: &mut [BvhNodeConstructionRecord; 8],
         current: &BvhNodeConstructionRecord,
         depth: usize,
@@ -608,13 +416,13 @@ impl Node {
                 BvhNodeConstructionRecord::Inner { ptr, bbox: _ } => {
                     if depth == 0 {
                         debug_assert!(child_id < 1);
-                        self.axis_top = ptr.axis as u8;
+                        self.axis_top = ptr.axis;
                     } else if depth == 1 {
                         debug_assert!(child_id < 2);
-                        self.axis_child[child_id as usize] = ptr.axis as u8;
+                        self.axis_child[child_id as usize] = ptr.axis;
                     } else if depth == 2 {
                         debug_assert!(child_id < 4);
-                        self.axis_grand_son[child_id as usize] = ptr.axis as u8;
+                        self.axis_grand_son[child_id as usize] = ptr.axis;
                     }
                     Self::from_bvh_node_traverse(
                         self,
@@ -636,13 +444,13 @@ impl Node {
             }
         }
     }
-    fn set_bboxes_array_layout(bboxes: &mut [[[f32; 8]; 3]; 2], child_id: u8, bbox: &Aabb) {
+    fn set_bboxes_array_layout(bboxes: &mut BBoxesArray, child_id: u8, bbox: &Aabb) {
         for min_max in 0..2 {
             for axis in 0..3 {
                 if min_max == 0 {
-                    bboxes[min_max][axis][child_id as usize] = bbox.min[axis];
+                    bboxes.0[min_max][axis][child_id as usize] = bbox.min[axis];
                 } else {
-                    bboxes[min_max][axis][child_id as usize] = bbox.max[axis];
+                    bboxes.0[min_max][axis][child_id as usize] = bbox.max[axis];
                 }
             }
         }
@@ -661,7 +469,7 @@ impl Node {
             }
         }
     }
-    fn load_bboxes(src: &[[[f32; 8]; 3]; 2]) -> [[__m256; 3]; 2] {
+    fn load_bboxes(arr: &BBoxesArray) -> [[__m256; 3]; 2] {
         unsafe {
             let mut res = [
                 [_mm256_set1_ps(std::f32::INFINITY); 3],
@@ -669,7 +477,7 @@ impl Node {
             ];
             for min_max in 0..2 {
                 for axis in 0..3 {
-                    res[min_max][axis] = _mm256_load_ps(src[min_max][axis].as_ptr());
+                    res[min_max][axis] = _mm256_load_ps(arr.0[min_max][axis].as_ptr());
                 }
             }
             res
