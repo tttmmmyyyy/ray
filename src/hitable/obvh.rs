@@ -260,7 +260,7 @@ impl Hitable for OBVH {
                 let node = &self.inners[node_ptr.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
                 debug_assert!(hit_bits <= 255);
-                node.push_node_stack(&mut node_stack, &ray_avx, hit_bits as u8);
+                node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
                 debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
             }
         }
@@ -308,54 +308,47 @@ impl Node {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
     #[inline(always)]
-    fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: u8) {
+    fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: i32) {
         let mut child_id = 0usize;
-        let mut sign = ray.dir_sign[self.axis_top];
-        child_id ^= (sign).shl(0);
-        sign = ray.dir_sign[self.axis_child[child_id]];
-        child_id ^= (sign).shl(1);
-        sign = ray.dir_sign[self.axis_grand_son[child_id]];
-        child_id ^= (sign).shl(2);
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        child_id ^= 0b001 * ray.dir_sign[self.axis_top];
+        child_id ^= 0b010 * ray.dir_sign[self.axis_child[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id ^= 0b100;
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id &= 0b011;
         child_id ^= 0b010;
-        sign = ray.dir_sign[self.axis_grand_son[child_id]];
-        child_id ^= (sign).shl(2);
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id ^= 0b100;
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id &= 0b001;
         child_id ^= 0b001;
-        sign = ray.dir_sign[self.axis_child[child_id]];
-        child_id ^= (sign).shl(1);
-        sign = ray.dir_sign[self.axis_grand_son[child_id]];
-        child_id ^= (sign).shl(2);
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        child_id ^= 0b010 * ray.dir_sign[self.axis_child[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id ^= 0b100;
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id &= 0b011;
         child_id ^= 0b010;
-        sign = ray.dir_sign[self.axis_grand_son[child_id]];
-        child_id ^= (sign).shl(2);
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
         child_id ^= 0b100;
-        if hit_bits & (1u8.shl(child_id)) != 0 {
+        if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
     }
