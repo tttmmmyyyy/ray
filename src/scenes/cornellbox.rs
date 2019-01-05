@@ -30,6 +30,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             Arc::new(ConstantTexture::new(&Vec3::new(0.73, 0.73, 0.73))),
             Arc::new(ConstantTexture::new(&Vec3::new(0.15, 0.15, 0.50))),
             55.5,
+            &Vec3::new(0.0, 0.0, 0.0),
         )))),
         0.000,
     ))); // far

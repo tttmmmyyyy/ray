@@ -40,7 +40,7 @@ impl<'a, 'b> Pdf for MixturePdf<'a, 'b> {
         }
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
-        match self.a_pdf {
+        let ret = match self.a_pdf {
             Some(a_pdf) => {
                 if rng.gen::<f32>() < self.mix {
                     a_pdf.generate(rng)
@@ -49,7 +49,9 @@ impl<'a, 'b> Pdf for MixturePdf<'a, 'b> {
                 }
             }
             None => self.b_pdf.generate(rng),
-        }
+        };
+        debug_assert!(ret.norm().is_finite() && ret.norm() > 0.0);
+        ret
     }
 }
 
@@ -64,10 +66,14 @@ impl Pdf for MixturePdfBox {
         self.mix * self.a_pdf.density(dir) + (1.0 - self.mix) * self.b_pdf.density(dir)
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
-        if rng.gen::<f32>() < self.mix {
+        let debug_res = if rng.gen::<f32>() < self.mix {
             self.a_pdf.generate(rng)
         } else {
             self.b_pdf.generate(rng)
+        };
+        if debug_res.norm() == 0.0 || !debug_res.norm().is_finite() {
+            println!("MixturePdfBox, {}", debug_res);
         }
+        debug_res
     }
 }

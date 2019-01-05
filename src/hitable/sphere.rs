@@ -80,7 +80,9 @@ impl Hitable for Sphere {
         let cosine = (1.0 - self.radius.powf(2.0) / (self.center - origin).norm_squared()).sqrt();
         let vec_local = random_in_cone(cosine, rng);
         let onb = Onb::build_from_w(&(self.center - origin));
-        onb.local_to_global_vec(&vec_local)
+        let ret = onb.local_to_global_vec(&vec_local);
+        debug_assert!(ret.norm().is_finite() && ret.norm() > 0.0);
+        ret
     }
     fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f32 {
         let cosine = (self.center - origin).normalize().dot(&dir.normalize());

@@ -21,6 +21,8 @@ impl<'a> Pdf for HitablePdf<'a> {
         self.hitable.direction_density(&self.origin, &dir)
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
-        self.hitable.random_direction_from(&self.origin, rng)
+        let ret = self.hitable.random_direction_from(&self.origin, rng);
+        debug_assert!(ret.norm().is_finite() && ret.norm() > 0.0);
+        ret
     }
 }

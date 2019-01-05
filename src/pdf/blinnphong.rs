@@ -35,7 +35,9 @@ impl Pdf for BlinnPhongPdf {
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
         let half_vec = self.cosn_pdf.generate(rng);
-        reflect(&self.in_ray_dir, &half_vec)
+        let ret = reflect(&self.in_ray_dir, &half_vec);
+        debug_assert!(ret.norm().is_finite() && ret.norm() > 0.0);
+        ret
     }
 }
 

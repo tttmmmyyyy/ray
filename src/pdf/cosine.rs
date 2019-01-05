@@ -52,8 +52,11 @@ impl Pdf for CosineNPdf {
         }
     }
     fn generate(&self, rng: &mut RandGen) -> Vec3 {
-        self.basis
-            .local_to_global_vec(&random_cosine_n_direction(self.exponent, rng))
+        let ret = self
+            .basis
+            .local_to_global_vec(&random_cosine_n_direction(self.exponent, rng));
+        debug_assert!(ret.norm().is_finite() && ret.norm() > 0.0);
+        ret
     }
 }
 
