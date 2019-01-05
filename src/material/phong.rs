@@ -14,8 +14,9 @@ use std::sync::Arc;
 
 /// Lambert-Phong reflection model
 pub struct Phong {
-    diffuse_coef: Arc<Texture>,
-    specular_coef: Arc<Texture>,
+    diffuse_texture: Arc<Texture>,
+    k_diffuse: f32,
+    k_specular: f32,
     exponent: i32,
     specular_normalizer: f32,
     specular_importance_weight: f32,
@@ -23,15 +24,17 @@ pub struct Phong {
 
 impl Phong {
     pub fn new(
-        diffuse_coef: Arc<Texture>,
-        specular_coef: Arc<Texture>,
+        diffuse_texture: Arc<Texture>,
+        k_diffuse: f32,
+        k_specular: f32,
         exponent: i32,
         specular_importance_weight: f32,
     ) -> Self {
         let specular_normalizer = (exponent as f32 + 2.0) / (2.0 * PI);
         Self {
-            diffuse_coef,
-            specular_coef,
+            diffuse_texture,
+            k_diffuse,
+            k_specular,
             exponent,
             specular_normalizer,
             specular_importance_weight,
@@ -58,19 +61,18 @@ impl Material for Phong {
     }
     fn brdf(&self, in_ray: &Vec3, out_ray: &Vec3, rec: &HitRecord, in_light: &Vec3) -> Vec3 {
         let diffuse = (1.0 / PI)
+            * self.k_diffuse
             * self
-                .diffuse_coef
+                .diffuse_texture
                 .value(&rec.tex_coord, &rec.point)
                 .component_mul(in_light);
         let specular = self.specular_normalizer
+            * self.k_specular
             * reflect(in_ray, &rec.normal)
                 .normalize()
                 .dot(&out_ray.normalize())
                 .powf(self.exponent as f32)
-            * self
-                .specular_coef
-                .value(&rec.tex_coord, &rec.point)
-                .component_mul(in_light);
+            * in_light;
         diffuse + specular
     }
 }
