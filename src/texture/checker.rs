@@ -7,23 +7,24 @@ pub struct CheckerTexture {
     length: f32,
     even: Arc<Texture>,
     odd: Arc<Texture>,
+    phase: Vec3,
 }
 
 impl CheckerTexture {
-    pub fn new(even: Arc<Texture>, odd: Arc<Texture>, length: f32) -> Self {
+    pub fn new(even: Arc<Texture>, odd: Arc<Texture>, length: f32, phase: &Vec3) -> Self {
         CheckerTexture {
             even: even,
             odd: odd,
             length: length,
+            phase: *phase,
         }
     }
 }
 
 impl Texture for CheckerTexture {
     fn value(&self, uv: &Vec2, p: &Vec3) -> Vec3 {
-        let sines = f32::sin(PI * p[0] / self.length)
-            * f32::sin(PI * p[1] / self.length)
-            * f32::sin(PI * p[2] / self.length);
+        let x = PI * p / self.length + self.phase;
+        let sines = f32::sin(x[0]) * f32::sin(x[1]) * f32::sin(x[2]);
         if sines < 0.0 {
             self.odd.value(uv, p)
         } else {
