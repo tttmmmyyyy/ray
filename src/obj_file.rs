@@ -5,6 +5,8 @@ use crate::aliases::{Vec2, Vec3};
 use crate::hitable::triangle::Triangle;
 use crate::hitable::Hitable;
 use crate::material::Material;
+use crate::util::HashVec3;
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::f32;
 use std::fs::File;
@@ -155,6 +157,29 @@ impl ObjGroup {
             normals: Vec::new(),
             faces: Vec::new(),
         }
+    }
+    pub fn unify_vertex(&mut self) {
+        let mut new_vertices: Vec<Vec3> = vec![];
+        new_vertices.reserve(self.vertices.len());
+        let mut vec_to_idx = HashMap::<HashVec3, usize>::new();
+        vec_to_idx.reserve(self.vertices.len());
+        for v in &self.vertices {
+            if vec_to_idx.contains_key(&HashVec3 { 0: *v }) {
+                continue;
+            }
+            let idx = new_vertices.len();
+            new_vertices.push(*v);
+            vec_to_idx.insert(HashVec3 { 0: *v }, idx);
+        }
+        for f in &mut self.faces {
+            for v in &mut f.0 {
+                let new_idx = vec_to_idx[&HashVec3 {
+                    0: self.vertices[v.vertex],
+                }];
+                v.vertex = new_idx;
+            }
+        }
+        self.vertices = new_vertices;
     }
     fn parse(lines: &mut VecDeque<String>) -> Result<Self, Error> {
         let mut grp = Self::empty();

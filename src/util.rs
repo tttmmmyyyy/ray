@@ -1,4 +1,7 @@
 use crate::aliases::{Mat4, Vec2, Vec3};
+use std::cmp::Eq;
+use std::hash::{Hash, Hasher};
+use std::mem::transmute;
 use std::time::Duration;
 
 pub fn zipwith_vec3(lhs: &Vec3, rhs: &Vec3, zipper: impl Fn(f32, f32) -> f32) -> Vec3 {
@@ -62,3 +65,25 @@ pub fn pretty_print_f32(val: f32) -> String {
         format!("{:.3}", val)
     }
 }
+
+#[derive(PartialEq)]
+pub struct HashVec3(pub Vec3);
+
+impl Hash for HashVec3 {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unsafe {
+            for i in 0..3 {
+                let x = self.0[i];
+                if x == 0.0 {
+                    state.write_u32(transmute(0.0f32));
+                } else {
+                    state.write_u32(transmute(x));
+                }
+                // NaNs are distinguished.
+            }
+        }
+    }
+}
+
+// lift PartialEq to Eq
+impl Eq for HashVec3 {}
