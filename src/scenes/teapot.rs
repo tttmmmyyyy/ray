@@ -58,7 +58,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
     ));
     objs.push(light.clone()); // light
-    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
         0.5,
