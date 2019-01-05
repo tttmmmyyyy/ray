@@ -55,18 +55,29 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
         let scatter = rec.material.scatter(ray, rec, rng);
         if depth > 0 && scatter.is_some() {
             let scatter = scatter.as_ref().unwrap();
-            let light = match scatter.pdf {
+            let light_in = match scatter.pdf {
                 SingularPdf::Finite {
                     pdf: ref material_pdf,
                 } => {
                     let imp_objs_pdf = create_importance_hitable_pdf(scene, &rec.point);
                     let pdf = mix_importance_hitable_pdf(&**material_pdf, &imp_objs_pdf);
                     let dir = pdf.generate(rng);
-                    let density = pdf.density(&dir);
-                    let out_ray = Ray::new(&rec.point, &dir, ray.time);
-                    let in_light = calc_color(&out_ray, &scene, rng, depth - 1);
-                    let cosine = rec.normal.dot(&dir.normalize()).max(0.0);
-                    (cosine / density) * rec.material.brdf(&ray.direction, &dir, rec, &in_light)
+                    let cosine = rec.normal.dot(&dir.normalize());
+                    if cosine <= 0.0 {
+                        // Note: this can be negative when importance_weight > 0.0
+                        Vec3::new(0.0, 0.0, 0.0)
+                    } else {
+                        let density = pdf.density(&dir);
+                        debug_assert!(density > 0.0);
+                        let out_ray = Ray::new(&rec.point, &dir, ray.time);
+                        let in_light = calc_color(&out_ray, &scene, rng, depth - 1);
+                        let brdf = rec.material.brdf(&ray.direction, &dir, rec, &in_light);
+                        debug_assert!(cosine.is_finite());
+                        debug_assert!(cosine > 0.0);
+                        debug_assert!(density.is_finite());
+                        debug_assert!(density > 0.0);
+                        (cosine / density) * brdf
+                    }
                 }
                 SingularPdf::Delta { ref dir } => {
                     let out_ray = &Ray::new(&rec.point, dir, ray.time);
@@ -74,7 +85,7 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                     rec.material.brdf(&ray.direction, dir, rec, &in_light)
                 }
             };
-            emitted + light
+            emitted + light_in
         } else {
             // if this material does not scatter ray (or depth == 0),
             emitted
