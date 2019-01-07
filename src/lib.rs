@@ -64,7 +64,7 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                     let dir = pdf.generate(rng);
                     let cosine = rec.normal.dot(&dir.normalize());
                     if cosine <= 0.0 {
-                        // Note: this can be negative when importance_weight > 0.0
+                        // Note: can be negative when importance_weight > 0.0
                         Vec3::new(0.0, 0.0, 0.0)
                     } else {
                         let density = pdf.density(&dir);
