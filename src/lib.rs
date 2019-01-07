@@ -22,18 +22,18 @@ use crate::pdf::{Pdf, SingularPdf};
 use crate::ray::Ray;
 use crate::scene::Scene;
 
-fn mix_importance_hitable_pdf<'m, 's, 'p>(
-    material_pdf: &'m dyn Pdf,
-    weight_imp_hit_pdf: &'s Option<(f32, HitablePdf)>,
-) -> MixturePdf<'s, 'm> {
-    match weight_imp_hit_pdf {
-        Some((weight, imp_hit_pdf)) => {
-            debug_assert!(*weight > 0.0);
-            MixturePdf::new(*weight, imp_hit_pdf, material_pdf)
-        }
-        None => MixturePdf::zero(material_pdf),
-    }
-}
+// fn mix_importance_hitable_pdf<'m, 's, 'p>(
+//     material_pdf: &'m dyn Pdf,
+//     weight_imp_hit_pdf: &'s Option<(f32, HitablePdf)>,
+// ) -> MixturePdf<'s, 'm> {
+//     match weight_imp_hit_pdf {
+//         Some((weight, imp_hit_pdf)) => {
+//             debug_assert!(*weight > 0.0);
+//             MixturePdf::new(*weight, imp_hit_pdf, material_pdf)
+//         }
+//         None => MixturePdf::zero(material_pdf),
+//     }
+// }
 
 // fn create_importance_hitable_pdf<'s>(
 //     scene: &'s Scene,
@@ -70,14 +70,15 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                         {
                             if scene
                                 .hitables
-                                .hit(&shadow_ray, 0.0001, light_hit_rec.t)
+                                .hit(&shadow_ray, 0.0001, light_hit_rec.t) // ToDo: 特にここで無駄な計算をしている
                                 .is_none()
                             {
                                 let cosine = rec.normal.dot(&dir.normalize());
                                 if cosine > 0.0 {
                                     let density = pdf.density(&dir);
                                     if density > 0.0 {
-                                        // ToDo: 本当はこれは成立するはずだが、成立しないことが思っていたより多くある。確認する。
+                                        // Mathematically Prob(density == 0.0) is zero (but occurres sometimes),
+                                        // and therefore just ignoring such cases to avoid Inf is harmless.
                                         let light_nee = light_hit_rec
                                             .material
                                             .emitted(&shadow_ray, &light_hit_rec);
@@ -96,7 +97,6 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                     let dir = material_pdf.generate(rng);
                     let cosine = rec.normal.dot(&dir.normalize());
                     if cosine <= 0.0 {
-                        // Note: can be negative when importance_weight > 0.0
                         light_in += Vec3::new(0.0, 0.0, 0.0);
                     } else {
                         let density = material_pdf.density(&dir);
