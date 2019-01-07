@@ -35,19 +35,19 @@ fn mix_importance_hitable_pdf<'m, 's, 'p>(
     }
 }
 
-fn create_importance_hitable_pdf<'s>(
-    scene: &'s Scene,
-    hit_pt: &Vec3,
-) -> Option<(f32, HitablePdf<'s>)> {
-    if scene.importance_weight > 0.0 {
-        Some((
-            scene.importance_weight,
-            HitablePdf::new(&(*scene.importance), hit_pt),
-        ))
-    } else {
-        None
-    }
-}
+// fn create_importance_hitable_pdf<'s>(
+//     scene: &'s Scene,
+//     hit_pt: &Vec3,
+// ) -> Option<(f32, HitablePdf<'s>)> {
+//     if scene.importance_weight > 0.0 {
+//         Some((
+//             scene.importance_weight,
+//             HitablePdf::new(&(*scene.importance), hit_pt),
+//         ))
+//     } else {
+//         None
+//     }
+// }
 
 pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Vec3 {
     if let Some(ref rec) = scene.hitables.hit(&ray, 0.0001, std::f32::MAX) {
@@ -59,15 +59,47 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                 SingularPdf::Finite {
                     pdf: ref material_pdf,
                 } => {
-                    let imp_objs_pdf = create_importance_hitable_pdf(scene, &rec.point);
-                    let pdf = mix_importance_hitable_pdf(&**material_pdf, &imp_objs_pdf);
-                    let dir = pdf.generate(rng);
+                    // NEE (Next Event Estimation)
+                    let mut light_in = Vec3::new(0.0, 0.0, 0.0);
+                    if let Some(ref light) = scene.light {
+                        // ToDo: 改善する。現状は実験的雑実装。
+                        let pdf = HitablePdf::new(&**light, &rec.point);
+                        let dir = pdf.generate(rng);
+                        let shadow_ray = Ray::new(&rec.point, &dir, ray.time);
+                        if let Some(ref light_hit_rec) = light.hit(&shadow_ray, 0.0, std::f32::MAX)
+                        {
+                            if scene
+                                .hitables
+                                .hit(&shadow_ray, 0.0001, light_hit_rec.t)
+                                .is_none()
+                            {
+                                let cosine = rec.normal.dot(&dir.normalize());
+                                if cosine > 0.0 {
+                                    let density = pdf.density(&dir);
+                                    if density > 0.0 {
+                                        // ToDo: 本当はこれは成立するはずだが、成立しないことが思っていたより多くある。確認する。
+                                        let light_nee = light_hit_rec
+                                            .material
+                                            .emitted(&shadow_ray, &light_hit_rec);
+                                        light_in += (cosine / density)
+                                            * rec.material.brdf(
+                                                &ray.direction,
+                                                &dir,
+                                                rec,
+                                                &light_nee,
+                                            );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    let dir = material_pdf.generate(rng);
                     let cosine = rec.normal.dot(&dir.normalize());
                     if cosine <= 0.0 {
                         // Note: can be negative when importance_weight > 0.0
-                        Vec3::new(0.0, 0.0, 0.0)
+                        light_in += Vec3::new(0.0, 0.0, 0.0);
                     } else {
-                        let density = pdf.density(&dir);
+                        let density = material_pdf.density(&dir);
                         debug_assert!(density > 0.0);
                         let out_ray = Ray::new(&rec.point, &dir, ray.time);
                         let in_light = calc_color(&out_ray, &scene, rng, depth - 1);
@@ -76,8 +108,9 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                         debug_assert!(cosine > 0.0);
                         debug_assert!(density.is_finite());
                         debug_assert!(density > 0.0);
-                        (cosine / density) * brdf
+                        light_in += (cosine / density) * brdf;
                     }
+                    light_in
                 }
                 SingularPdf::Delta { ref dir } => {
                     let out_ray = &Ray::new(&rec.point, dir, ray.time);

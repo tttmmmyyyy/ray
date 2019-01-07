@@ -120,8 +120,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     );
     Scene {
         hitables: objs,
-        importance: Arc::new(Empty::new()),
-        importance_weight: 0.0,
+        light: None,
         camera: camera,
         bg: Arc::new(AmbientLight::new(&Vec3::new(0.75, 0.85, 1.0))),
     }

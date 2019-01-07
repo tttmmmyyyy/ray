@@ -57,7 +57,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             &Vec3::new(light_power, light_power, light_power),
         )))),
     ));
-    objs.push(light.clone()); // light
     let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
@@ -117,8 +116,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let bg = Arc::new(AmbientLight::new(&Vec3::new(0.0, 0.0, 0.0)));
     Scene {
         hitables: objs,
-        importance: light.clone(),
-        importance_weight: 0.4,
+        light: Some(light),
         camera: camera,
         bg: bg,
     }

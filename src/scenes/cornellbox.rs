@@ -80,7 +80,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
         0.001,
     ));
-    objs.push(light.clone()); // light
     let lambert_white = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 1.0, 1.0,
     )))));
@@ -126,7 +125,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     objs.push(metal_sphere.clone()); // metal sphere
                                      // let objs = Arc::new(HitableList::new(objs));
     let objs = Arc::new(OBVH::from_bvh_node(Arc::new(BvhNode::new(objs, 0.0, 1.0))));
-    let importance = light.clone();
     let look_from = Vec3::new(278.0, 278.0, -800.0);
     let look_at = Vec3::new(278.0, 278.0, 0.0);
     let dist_to_focus = 10.0;
@@ -144,8 +142,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     );
     Scene {
         hitables: objs,
-        importance: importance,
-        importance_weight: 0.4,
+        light: Some(light),
         camera: camera,
         bg: Arc::new(AmbientLight::new(&Vec3::new(0.0, 0.0, 0.0))),
     }

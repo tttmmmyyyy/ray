@@ -7,9 +7,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 pub struct Scene {
-    pub hitables: Arc<Hitable>,   // rendered hitables
-    pub importance: Arc<Hitable>, // hitables used for importance sampling method
-    pub importance_weight: f32,
+    pub hitables: Arc<Hitable>, // rendered hitables
+    pub light: Option<Arc<Hitable>>,
     pub camera: Camera,
     pub bg: Arc<Background>,
 }
