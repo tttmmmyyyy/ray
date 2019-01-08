@@ -1,6 +1,7 @@
 use crate::affine::Affine;
 use crate::aliases::Vec3;
 
+#[derive(Clone, Copy)]
 pub struct Ray {
     pub origin: Vec3,
     pub direction: Vec3,

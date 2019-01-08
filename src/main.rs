@@ -89,7 +89,7 @@ fn trace_rays(
                 let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
                 let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
                 let ray = scene.camera.get_ray(u, v, &mut rng);
-                let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */);
+                let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */, false);
                 let idx = (i + (ny - j - 1) * nx) as usize;
                 color_sum.sum[idx] += col;
             }

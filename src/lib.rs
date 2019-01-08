@@ -49,18 +49,26 @@ use crate::scene::Scene;
 //     }
 // }
 
-pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Vec3 {
+pub fn calc_color(
+    ray: &Ray,
+    scene: &Scene,
+    rng: &mut RandGen,
+    depth: i32,
+    is_ray_diffused: bool,
+) -> Vec3 {
+    let mut light_out = Vec3::new(0.0, 0.0, 0.0);
     if let Some(ref rec) = scene.hitables.hit(&ray, 0.0001, std::f32::MAX) {
-        let emitted = rec.material.emitted(ray, rec);
+        if !is_ray_diffused {
+            light_out += rec.material.emitted(ray, rec);
+        }
         let scatter = rec.material.scatter(ray, rec, rng);
         if depth > 0 && scatter.is_some() {
             let scatter = scatter.as_ref().unwrap();
-            let light_in = match scatter.pdf {
+            match scatter.pdf {
                 SingularPdf::Finite {
                     pdf: ref material_pdf,
                 } => {
                     // NEE (Next Event Estimation)
-                    let mut light_in = Vec3::new(0.0, 0.0, 0.0);
                     if let Some(ref light) = scene.light {
                         // ToDo: 改善する。現状は実験的雑実装。
                         let pdf = HitablePdf::new(&**light, &rec.point);
@@ -79,15 +87,15 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                                     if density > 0.0 {
                                         // Mathematically Prob(density == 0.0) is zero (but occurres sometimes),
                                         // and therefore just ignoring such cases to avoid Inf is harmless.
-                                        let light_nee = light_hit_rec
+                                        let light_in = light_hit_rec
                                             .material
                                             .emitted(&shadow_ray, &light_hit_rec);
-                                        light_in += (cosine / density)
+                                        light_out += (cosine / density)
                                             * rec.material.brdf(
                                                 &ray.direction,
                                                 &dir,
                                                 rec,
-                                                &light_nee,
+                                                &light_in,
                                             );
                                     }
                                 }
@@ -96,35 +104,29 @@ pub fn calc_color(ray: &Ray, scene: &Scene, rng: &mut RandGen, depth: i32) -> Ve
                     }
                     let dir = material_pdf.generate(rng);
                     let cosine = rec.normal.dot(&dir.normalize());
-                    if cosine <= 0.0 {
-                        light_in += Vec3::new(0.0, 0.0, 0.0);
-                    } else {
+                    if cosine > 0.0 {
                         let density = material_pdf.density(&dir);
                         debug_assert!(density > 0.0);
                         let out_ray = Ray::new(&rec.point, &dir, ray.time);
-                        let in_light = calc_color(&out_ray, &scene, rng, depth - 1);
+                        let in_light = calc_color(&out_ray, &scene, rng, depth - 1, true);
                         let brdf = rec.material.brdf(&ray.direction, &dir, rec, &in_light);
                         debug_assert!(cosine.is_finite());
                         debug_assert!(cosine > 0.0);
                         debug_assert!(density.is_finite());
                         debug_assert!(density > 0.0);
-                        light_in += (cosine / density) * brdf;
+                        light_out += (cosine / density) * brdf;
                     }
-                    light_in
                 }
                 SingularPdf::Delta { ref dir } => {
                     let out_ray = &Ray::new(&rec.point, dir, ray.time);
-                    let in_light = calc_color(&out_ray, &scene, rng, depth - 1);
-                    rec.material.brdf(&ray.direction, dir, rec, &in_light)
+                    let in_light = calc_color(&out_ray, &scene, rng, depth - 1, false);
+                    light_out += rec.material.brdf(&ray.direction, dir, rec, &in_light)
                 }
             };
-            emitted + light_in
-        } else {
-            // if this material does not scatter ray (or depth == 0),
-            emitted
         }
     } else {
         // if ray hits no hitable,
-        scene.bg.color(ray)
+        light_out += scene.bg.color(ray)
     }
+    light_out
 }
