@@ -28,6 +28,14 @@ impl Hitable for HitableList {
         }
         return res;
     }
+    fn is_hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> bool {
+        for obj in &self.list {
+            if obj.is_hit(ray, t_min, t_max) {
+                return true;
+            }
+        }
+        false
+    }
     fn bounding_box(&self, time_0: f32, time_1: f32) -> Option<Aabb> {
         if self.list.len() == 0 {
             return Some(Aabb::empty());

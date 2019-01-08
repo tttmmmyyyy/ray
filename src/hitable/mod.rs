@@ -17,8 +17,13 @@ use crate::ray::Ray;
 use std::sync::Arc;
 
 pub trait Hitable: Send + Sync {
-    /// Caculates HitRecord.
+    /// Calculates HitRecord.
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, t_max: f32) -> Option<HitRecord<'s>>;
+    /// Judge the ray hits self or not.
+    /// Each Hitable should provide a more efficient implementation than the default.
+    fn is_hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, t_max: f32) -> bool {
+        self.hit(ray, t_min, t_max).is_some()
+    }
     /// Axis-aligned bounding box of this Hitable.
     /// Returns None if this does not have bounding box (e.g., infinite plane)
     /// For moving objects, returns the unite of all boxes while the time interval [t0, t1]

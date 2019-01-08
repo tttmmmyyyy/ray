@@ -266,6 +266,34 @@ impl Hitable for OBVH {
         }
         hit_record
     }
+    fn is_hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, t_max: f32) -> bool {
+        let ray_avx = RayAVXInfo::from_ray(ray);
+        let mut node_stack = NodeStack::empty();
+        node_stack.push(NodePointer::root());
+        while !node_stack.is_empty() {
+            let node_ptr = node_stack.pop();
+            if node_ptr.is_leaf() {
+                if node_ptr.is_empty_leaf() {
+                    continue;
+                }
+                if self.leaves[node_ptr.index()].is_hit(ray, t_min, t_max) {
+                    return true;
+                }
+            } else {
+                // if an inner node,
+                let node = &self.inners[node_ptr.index()];
+                let hit_bits = node.hit(&ray_avx, t_min, t_max);
+                debug_assert!(hit_bits <= 255);
+                for bit in 0..8 {
+                    if hit_bits & 1i32.shl(bit) != 0 {
+                        node_stack.push(node.children[bit]);
+                    }
+                }
+                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
+            }
+        }
+        false
+    }
     fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
         unimplemented!()
     }

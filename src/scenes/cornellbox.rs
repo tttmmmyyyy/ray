@@ -80,6 +80,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
         0.001,
     ));
+    objs.push(light.clone());
     let lambert_white = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 1.0, 1.0,
     )))));
