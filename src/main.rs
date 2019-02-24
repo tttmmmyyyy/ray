@@ -104,8 +104,8 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 800;
-    const IMAGE_HEIGHT: i32 = 800;
+    const IMAGE_WIDTH: i32 = 200;
+    const IMAGE_HEIGHT: i32 = 200;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
     const RAYS_PER_PIXEL: i32 = 100;
     const THREAD_CNT: i32 = 4;
