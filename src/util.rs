@@ -37,7 +37,7 @@ pub fn proj_transform(mat: &Mat4, pt: &Vec3) -> Vec3 {
 }
 
 pub fn duration_to_secs(dur: &Duration) -> f64 {
-    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 1.0e-3 + dur.subsec_nanos() as f64 * 1.0e-6
+    dur.as_secs() as f64 + dur.subsec_millis() as f64 * 1.0e-3 + dur.subsec_nanos() as f64 * 1.0e-9
 }
 
 pub fn compare_vec3_le(lhs: &Vec3, rhs: &Vec3) -> bool {

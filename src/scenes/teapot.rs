@@ -32,22 +32,22 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let _phong_checker = Arc::new(Phong::new(checker.clone(), 0.5, 0.5, 50, 0.5));
     let wall_mat = lambert_checker.clone();
     // Lambertian::boxed(ConstantTexture::boxed(&Vec3::new(0.9, 0.9, 0.9))),
-    objs.push(Arc::new(Rectangle::new(
-        &Vec3::new(-L, -0.0, -L),
-        &Vec3::new(0.0, -0.0, 2.0 * L),
-        &Vec3::new(2.0 * L, -0.01, 0.0),
-        wall_mat.clone(),
-        0.1,
-    ))); // floor
+    // objs.push(Arc::new(Rectangle::new(
+    //     &Vec3::new(-L, -0.0, -L),
+    //     &Vec3::new(0.0, -0.0, 2.0 * L),
+    //     &Vec3::new(2.0 * L, -0.01, 0.0),
+    //     wall_mat.clone(),
+    //     0.1,
+    // ))); // floor
     let wall_z = -3.0;
-    objs.push(Arc::new(Rectangle::new(
-        &Vec3::new(-L, -L, wall_z),
-        &Vec3::new(2.0 * L, 0.0, 0.0),
-        &Vec3::new(0.0, 2.0 * L, 0.0),
-        wall_mat.clone(),
-        // Lambertian::boxed(ConstantTexture::boxed(&Vec3::new(0.9, 0.9, 0.9))),
-        0.1,
-    ))); // floor
+    // objs.push(Arc::new(Rectangle::new(
+    //     &Vec3::new(-L, -L, wall_z),
+    //     &Vec3::new(2.0 * L, 0.0, 0.0),
+    //     &Vec3::new(0.0, 2.0 * L, 0.0),
+    //     wall_mat.clone(),
+    //     // Lambertian::boxed(ConstantTexture::boxed(&Vec3::new(0.9, 0.9, 0.9))),
+    //     0.1,
+    // ))); // floor
     let light_power = 10.0;
     let light_radius = 6.0;
     let light = Arc::new(Sphere::new(
@@ -57,12 +57,12 @@ pub fn scene(aspect_ratio: f32) -> Scene {
             &Vec3::new(light_power, light_power, light_power),
         )))),
     ));
-    objs.push(light.clone()); // light
-    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
-        232.0 / 255.0,
-        200.0 / 255.0,
-        0.5,
-    )))));
+    // objs.push(light.clone()); // light
+    // let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    //     232.0 / 255.0,
+    //     200.0 / 255.0,
+    //     0.5,
+    // )))));
     let _glass = Arc::new(Glass::new(2.2, 0.0));
     let phong = Arc::new(Phong::new(
         Arc::new(ConstantTexture::rgb(232.0 / 255.0, 200.0 / 255.0, 0.5)),
@@ -94,7 +94,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     //     0.0,
     //     1.0,
     // ));
-    let teapot = Arc::new(OBVH::from_bvh_node(teapot));
+    // let teapot = Arc::new(OBVH::from_bvh_node(teapot));
     objs.push(teapot);
     // objs.push(bunny);
     let objs = Arc::new(HitableList::new(objs));

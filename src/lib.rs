@@ -99,50 +99,55 @@ pub fn calc_color(
     depth: i32,
     is_ray_diffused: bool,
 ) -> Vec3 {
-    let mut light_out = Vec3::new(0.0, 0.0, 0.0);
     let rec = scene.hitables.hit(&ray, 0.0001, std::f32::MAX);
     if rec.is_none() {
-        light_out += scene.bg.color(ray);
-        return light_out;
+        Vec3::new(0.0, 0.0, 0.0)
+    } else {
+        Vec3::new(1.0, 1.0, 1.0)
     }
-    let rec = rec.as_ref().unwrap();
-    if !is_ray_diffused {
-        light_out += rec.material.emitted(ray, rec);
-    }
-    if depth == 0 {
-        return light_out;
-    }
-    let scatter = rec.material.scatter(ray, rec, rng);
-    if scatter.is_none() {
-        return light_out;
-    }
-    let scatter = scatter.as_ref().unwrap();
-    match scatter.pdf {
-        SingularPdf::Finite {
-            pdf: ref material_pdf,
-        } => {
-            // NEE (Next Event Estimation)
-            next_event_estimation(ray, rec, scene, &mut light_out, rng);
-            let dir = material_pdf.generate(rng);
-            let cosine = rec.normal.dot(&dir.normalize());
-            if cosine > 0.0 {
-                let density = material_pdf.density(&dir);
-                debug_assert!(density > 0.0);
-                let out_ray = Ray::new(&rec.point, &dir, ray.time);
-                let in_light = calc_color(&out_ray, &scene, rng, depth - 1, true);
-                let brdf = rec.material.brdf(&ray.direction, &dir, rec, &in_light);
-                debug_assert!(cosine.is_finite());
-                debug_assert!(cosine > 0.0);
-                debug_assert!(density.is_finite());
-                debug_assert!(density > 0.0);
-                light_out += (cosine / density) * brdf;
-            }
-        }
-        SingularPdf::Delta { ref dir } => {
-            let out_ray = &Ray::new(&rec.point, dir, ray.time);
-            let in_light = calc_color(&out_ray, &scene, rng, depth - 1, false);
-            light_out += rec.material.brdf(&ray.direction, dir, rec, &in_light)
-        }
-    };
-    light_out
+    // let mut light_out = Vec3::new(0.0, 0.0, 0.0);
+    // if rec.is_none() {
+    //     light_out += scene.bg.color(ray);
+    //     return light_out;
+    // }
+    // let rec = rec.as_ref().unwrap();
+    // if !is_ray_diffused {
+    //     light_out += rec.material.emitted(ray, rec);
+    // }
+    // if depth == 0 {
+    //     return light_out;
+    // }
+    // let scatter = rec.material.scatter(ray, rec, rng);
+    // if scatter.is_none() {
+    //     return light_out;
+    // }
+    // let scatter = scatter.as_ref().unwrap();
+    // match scatter.pdf {
+    //     SingularPdf::Finite {
+    //         pdf: ref material_pdf,
+    //     } => {
+    //         // NEE (Next Event Estimation)
+    //         next_event_estimation(ray, rec, scene, &mut light_out, rng);
+    //         let dir = material_pdf.generate(rng);
+    //         let cosine = rec.normal.dot(&dir.normalize());
+    //         if cosine > 0.0 {
+    //             let density = material_pdf.density(&dir);
+    //             debug_assert!(density > 0.0);
+    //             let out_ray = Ray::new(&rec.point, &dir, ray.time);
+    //             let in_light = calc_color(&out_ray, &scene, rng, depth - 1, true);
+    //             let brdf = rec.material.brdf(&ray.direction, &dir, rec, &in_light);
+    //             debug_assert!(cosine.is_finite());
+    //             debug_assert!(cosine > 0.0);
+    //             debug_assert!(density.is_finite());
+    //             debug_assert!(density > 0.0);
+    //             light_out += (cosine / density) * brdf;
+    //         }
+    //     }
+    //     SingularPdf::Delta { ref dir } => {
+    //         let out_ray = &Ray::new(&rec.point, dir, ray.time);
+    //         let in_light = calc_color(&out_ray, &scene, rng, depth - 1, false);
+    //         light_out += rec.material.brdf(&ray.direction, dir, rec, &in_light)
+    //     }
+    // };
+    // light_out
 }
