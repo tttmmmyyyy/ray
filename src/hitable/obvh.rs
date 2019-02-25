@@ -193,6 +193,9 @@ impl NodeStack {
     fn len(&self) -> usize {
         self.end
     }
+    fn reserve(&mut self, size: usize) {
+        self.end += size;
+    }
 }
 
 impl NodePointer {
@@ -266,57 +269,19 @@ impl Hitable for OBVH {
                 // if an inner node,
                 let node = &self.inners[node_ptr.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
-                debug_assert!(hit_bits <= 255);
-                let stack_size_prev = node_stack.len();
-                node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
-                assert!(node_stack.len() == stack_size_prev + 8); // ToDo: debug_assertにする。
+                debug_assert!(hit_bits < 256);
                 let stack_indices = node.calc_stack_indices(&ray_avx.dir_sign);
-                let mut failed = false;
+                let stack_idx_base = node_stack.len();
+                node_stack.reserve(8);
                 for child_id in 0..8 {
+                    let stack_idx = stack_idx_base + (stack_indices.shr(child_id * 8) as usize % 8);
                     if hit_bits & (1i32.shl(child_id)) == 0 {
-                        continue;
-                    }
-                    let stack_idx: u8 = (stack_indices.shr(child_id * 8)) as u8;
-                    let stack_idx: usize = stack_idx as usize;
-                    assert!(stack_idx <= 8); // ToDo: debug_assertにする。
-                    let ptr = node_stack.data[stack_size_prev + stack_idx];
-                    if ptr.info != node.children[child_id].info {
-                        failed = true;
-                        break;
+                        node_stack.data[stack_idx] = NodePointer::empty_leaf();
+                    } else {
+                        node_stack.data[stack_idx] = node.children[child_id];
                     }
                 }
-                if failed {
-                    println!("stack_indices: ");
-                    println!(
-                        "[0]:{} [1]:{} [2]:{} [3]:{} [4]:{} [5]:{} [6]:{} [7]:{}",
-                        stack_indices.shr(8 * 0) as u8,
-                        stack_indices.shr(8 * 1) as u8,
-                        stack_indices.shr(8 * 2) as u8,
-                        stack_indices.shr(8 * 3) as u8,
-                        stack_indices.shr(8 * 4) as u8,
-                        stack_indices.shr(8 * 5) as u8,
-                        stack_indices.shr(8 * 6) as u8,
-                        stack_indices.shr(8 * 7) as u8,
-                    );
-                    println!(
-                        "ray signs [0]: {}, [1]: {}, [2]: {}",
-                        ray_avx.dir_sign[0], ray_avx.dir_sign[1], ray_avx.dir_sign[2]
-                    );
-                    println!(
-                        "axis_top: {}, axis_child=({}, {}), axis_gson=({}, {}, {}, {})",
-                        node.axis_top,
-                        node.axis_child[0],
-                        node.axis_child[1],
-                        node.axis_gson[0],
-                        node.axis_gson[1],
-                        node.axis_gson[2],
-                        node.axis_gson[3],
-                    );
-                    println!("axis bits 0: {:b}", node.axis_bits_0);
-                    println!("axis bits 1: {:b}", node.axis_bits_1);
-                    assert!(false); // ToDo: debug_assertにする。
-                }
-                assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND); // ToDo: debug_assertにする。
+                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
             }
         }
         hit_record
@@ -344,7 +309,7 @@ impl Hitable for OBVH {
                         node_stack.push(node.children[bit]); // ToDo: 適当実装？
                     }
                 }
-                assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND); // ToDo: debug_assertにする。
+                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
             }
         }
         false
@@ -413,29 +378,20 @@ impl Node {
             | (0b111u64 << 8 * 6)
             | (0b111u64 << 8 * 7);
         // >>
-        // コメント再掲
-        // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
-        // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-        // axis_bit_i[child_id]{2} = axis_top{i}
-        // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-        // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
         let mut mapped: u64 = 0;
         if ray_is_pos[0b00] == 1 {
-            // println!("ray_is_pos[0b00] == 1");
             mapped |= !self.axis_bits_1 & !self.axis_bits_0 & MASK;
         }
         if ray_is_pos[0b01] == 1 {
-            // println!("ray_is_pos[0b01] == 1");
             mapped |= !self.axis_bits_1 & self.axis_bits_0;
         }
         if ray_is_pos[0b10] == 1 {
-            // println!("ray_is_pos[0b10] == 1");
             mapped |= self.axis_bits_1 & !self.axis_bits_0;
         }
-        // println!("mapped: {}", mapped);
-        assert!((mapped ^ CHILD_IDS) & MASK == mapped ^ CHILD_IDS); // ToDo: debug_assertに変更する
+        debug_assert!((mapped ^ CHILD_IDS) & MASK == mapped ^ CHILD_IDS);
         mapped ^ CHILD_IDS
     }
+    #[allow(unused)]
     #[inline(always)]
     fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: i32) {
         let mut child_id = 0usize;
@@ -770,3 +726,51 @@ impl fmt::Debug for OBVH {
         Ok(())
     }
 }
+
+// node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
+// assert!(node_stack.len() == stack_size_prev + 8); // ToDo: debug_assertにする。
+// let mut failed = false;
+// for child_id in 0..8 {
+//     if hit_bits & (1i32.shl(child_id)) == 0 {
+//         continue;
+//     }
+//     let stack_idx: u8 = (stack_indices.shr(child_id * 8)) as u8;
+//     let stack_idx: usize = stack_idx as usize;
+//     assert!(stack_idx <= 8); // ToDo: debug_assertにする。
+//     let ptr = node_stack.data[stack_size_prev + stack_idx];
+//     if ptr.info != node.children[child_id].info {
+//         failed = true;
+//         break;
+//     }
+// }
+// if failed {
+//     println!("stack_indices: ");
+//     println!(
+//         "[0]:{} [1]:{} [2]:{} [3]:{} [4]:{} [5]:{} [6]:{} [7]:{}",
+//         stack_indices.shr(8 * 0) as u8,
+//         stack_indices.shr(8 * 1) as u8,
+//         stack_indices.shr(8 * 2) as u8,
+//         stack_indices.shr(8 * 3) as u8,
+//         stack_indices.shr(8 * 4) as u8,
+//         stack_indices.shr(8 * 5) as u8,
+//         stack_indices.shr(8 * 6) as u8,
+//         stack_indices.shr(8 * 7) as u8,
+//     );
+//     println!(
+//         "ray signs [0]: {}, [1]: {}, [2]: {}",
+//         ray_avx.dir_sign[0], ray_avx.dir_sign[1], ray_avx.dir_sign[2]
+//     );
+//     println!(
+//         "axis_top: {}, axis_child=({}, {}), axis_gson=({}, {}, {}, {})",
+//         node.axis_top,
+//         node.axis_child[0],
+//         node.axis_child[1],
+//         node.axis_gson[0],
+//         node.axis_gson[1],
+//         node.axis_gson[2],
+//         node.axis_gson[3],
+//     );
+//     println!("axis bits 0: {:b}", node.axis_bits_0);
+//     println!("axis bits 1: {:b}", node.axis_bits_1);
+//     assert!(false); // ToDo: debug_assertにする。
+// }
