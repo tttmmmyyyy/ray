@@ -80,9 +80,9 @@ struct Node {
     axis_gson: [usize; 4],  // axis_child[i] = axis dividing children with child_id % 4 == i
     // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
     // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-    // axis_bit_i[child_id]{0} = axis_top{i}
+    // axis_bit_i[child_id]{2} = axis_top{i}
     // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-    // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+    // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
     axis_bits_0: u64,
     axis_bits_1: u64,
 }
@@ -164,7 +164,7 @@ struct NodePointer {
     info: u32,
 }
 
-const NODE_STACK_UPPER_BOUND: usize = 32;
+const NODE_STACK_UPPER_BOUND: usize = 64;
 
 struct NodeStack {
     data: [NodePointer; NODE_STACK_UPPER_BOUND],
@@ -267,8 +267,56 @@ impl Hitable for OBVH {
                 let node = &self.inners[node_ptr.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
                 debug_assert!(hit_bits <= 255);
+                let stack_size_prev = node_stack.len();
                 node.push_node_stack(&mut node_stack, &ray_avx, hit_bits);
-                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
+                assert!(node_stack.len() == stack_size_prev + 8); // ToDo: debug_assertにする。
+                let stack_indices = node.calc_stack_indices(&ray_avx.dir_sign);
+                let mut failed = false;
+                for child_id in 0..8 {
+                    if hit_bits & (1i32.shl(child_id)) == 0 {
+                        continue;
+                    }
+                    let stack_idx: u8 = (stack_indices.shr(child_id * 8)) as u8;
+                    let stack_idx: usize = stack_idx as usize;
+                    assert!(stack_idx <= 8); // ToDo: debug_assertにする。
+                    let ptr = node_stack.data[stack_size_prev + stack_idx];
+                    if ptr.info != node.children[child_id].info {
+                        failed = true;
+                        break;
+                    }
+                }
+                if failed {
+                    println!("stack_indices: ");
+                    println!(
+                        "[0]:{} [1]:{} [2]:{} [3]:{} [4]:{} [5]:{} [6]:{} [7]:{}",
+                        stack_indices.shr(8 * 0) as u8,
+                        stack_indices.shr(8 * 1) as u8,
+                        stack_indices.shr(8 * 2) as u8,
+                        stack_indices.shr(8 * 3) as u8,
+                        stack_indices.shr(8 * 4) as u8,
+                        stack_indices.shr(8 * 5) as u8,
+                        stack_indices.shr(8 * 6) as u8,
+                        stack_indices.shr(8 * 7) as u8,
+                    );
+                    println!(
+                        "ray signs [0]: {}, [1]: {}, [2]: {}",
+                        ray_avx.dir_sign[0], ray_avx.dir_sign[1], ray_avx.dir_sign[2]
+                    );
+                    println!(
+                        "axis_top: {}, axis_child=({}, {}), axis_gson=({}, {}, {}, {})",
+                        node.axis_top,
+                        node.axis_child[0],
+                        node.axis_child[1],
+                        node.axis_gson[0],
+                        node.axis_gson[1],
+                        node.axis_gson[2],
+                        node.axis_gson[3],
+                    );
+                    println!("axis bits 0: {:b}", node.axis_bits_0);
+                    println!("axis bits 1: {:b}", node.axis_bits_1);
+                    assert!(false); // ToDo: debug_assertにする。
+                }
+                assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND); // ToDo: debug_assertにする。
             }
         }
         hit_record
@@ -293,10 +341,10 @@ impl Hitable for OBVH {
                 debug_assert!(hit_bits <= 255);
                 for bit in 0..8 {
                     if hit_bits & 1i32.shl(bit) != 0 {
-                        node_stack.push(node.children[bit]);
+                        node_stack.push(node.children[bit]); // ToDo: 適当実装？
                     }
                 }
-                debug_assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND);
+                assert!(node_stack.len() <= NODE_STACK_UPPER_BOUND); // ToDo: debug_assertにする。
             }
         }
         false
@@ -343,16 +391,18 @@ impl Node {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
     #[inline(always)]
-    fn calc_stacked_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
-        const CHILD_IDS: u64 = (0u64 << 8 * 0)
-            | (1u64 << 8 * 1)
-            | (2u64 << 8 * 2)
-            | (3u64 << 8 * 3)
-            | (4u64 << 8 * 4)
-            | (5u64 << 8 * 5)
-            | (6u64 << 8 * 6)
-            | (7u64 << 8 * 7);
+    fn calc_stack_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
+        const CHILD_IDS: u64 = (0b000u64 << 8 * 0)
+            | (0b100u64 << 8 * 1)
+            | (0b010u64 << 8 * 2)
+            | (0b110u64 << 8 * 3)
+            | (0b001u64 << 8 * 4)
+            | (0b101u64 << 8 * 5)
+            | (0b011u64 << 8 * 6)
+            | (0b111u64 << 8 * 7);
         // >>
+        // ToDo: child_idの振り方はやはり逆になってしまっていてよろしくないかも。
+        // 優先度の大きいビットを上位ビットにするべきであった。
         const MASK: u64 = (0b111u64 << 8 * 0)
             | (0b111u64 << 8 * 1)
             | (0b111u64 << 8 * 2)
@@ -365,19 +415,23 @@ impl Node {
         // コメント再掲
         // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
         // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-        // axis_bit_i[child_id]{0} = axis_top{i}
+        // axis_bit_i[child_id]{2} = axis_top{i}
         // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-        // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+        // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
         let mut mapped: u64 = 0;
         if ray_is_pos[0b00] == 1 {
-            mapped |= !self.axis_bits_0 & !self.axis_bits_1;
+            // println!("ray_is_pos[0b00] == 1");
+            mapped |= !self.axis_bits_1 & !self.axis_bits_0 & MASK;
         }
         if ray_is_pos[0b01] == 1 {
-            mapped |= !self.axis_bits_0 & self.axis_bits_1;
+            // println!("ray_is_pos[0b01] == 1");
+            mapped |= !self.axis_bits_1 & self.axis_bits_0;
         }
         if ray_is_pos[0b10] == 1 {
-            mapped |= self.axis_bits_0 & !self.axis_bits_1;
+            // println!("ray_is_pos[0b10] == 1");
+            mapped |= self.axis_bits_1 & !self.axis_bits_0;
         }
+        // println!("mapped: {}", mapped);
         assert!((mapped ^ CHILD_IDS) & MASK == mapped ^ CHILD_IDS); // ToDo: debug_assertに変更する
         mapped ^ CHILD_IDS
     }
@@ -389,20 +443,28 @@ impl Node {
         child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id ^= 0b100;
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id &= 0b011;
         child_id ^= 0b010;
         child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id ^= 0b100;
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id &= 0b001;
         child_id ^= 0b001;
@@ -410,20 +472,28 @@ impl Node {
         child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id ^= 0b100;
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id &= 0b011;
         child_id ^= 0b010;
         child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
         child_id ^= 0b100;
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
+        } else {
+            node_stack.push(NodePointer::empty_leaf()); // ToDo: 不要だがデバッグのために追記
         }
     }
     fn empty() -> Self {
@@ -505,23 +575,23 @@ impl Node {
     fn calc_axis_bits(&mut self) {
         // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
         // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-        // axis_bit_i[child_id]{0} = axis_top{i}
+        // axis_bit_i[child_id]{2} = axis_top{i}
         // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-        // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+        // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
         let mut axis_bits_0: u64 = 0;
         let mut axis_bits_1: u64 = 0;
         let axis_bits_ref = [&mut axis_bits_0, &mut axis_bits_1];
         for child_id in 0..8 {
             let base: u64 = 1u64.shl(child_id * 8);
-            for i in 0..1 {
+            for i in 0..2 {
                 if self.axis_top & 1usize.shl(i) != 0usize {
-                    *axis_bits_ref[i] |= base.shl(0);
+                    *axis_bits_ref[i] |= base.shl(2);
                 }
                 if self.axis_child[child_id % 2] & 1usize.shl(i) != 0usize {
                     *axis_bits_ref[i] |= base.shl(1);
                 }
                 if self.axis_gson[child_id % 4] & 1usize.shl(i) != 0usize {
-                    *axis_bits_ref[i] |= base.shl(2);
+                    *axis_bits_ref[i] |= base.shl(0);
                 }
             }
         }
