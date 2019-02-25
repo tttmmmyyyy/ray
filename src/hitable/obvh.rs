@@ -78,6 +78,13 @@ struct Node {
     axis_top: usize,        // Axis dividing left-leaves and right-leaves.
     axis_child: [usize; 2], // axis_child[i] = axis dividing children with child_id % 2 == i
     axis_gson: [usize; 4],  // axis_child[i] = axis dividing children with child_id % 4 == i
+    // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
+    // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
+    // axis_bit_i[child_id]{0} = axis_top{i}
+    // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
+    // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+    axis_bits_0: u64,
+    axis_bits_1: u64,
 }
 
 impl fmt::Debug for Node {
@@ -243,10 +250,10 @@ impl Hitable for OBVH {
         let mut hit_record: Option<HitRecord<'s>> = None;
         while !node_stack.is_empty() {
             let node_ptr = node_stack.pop();
+            if node_ptr.is_empty_leaf() {
+                continue;
+            }
             if node_ptr.is_leaf() {
-                if node_ptr.is_empty_leaf() {
-                    continue;
-                }
                 HitRecord::replace_to_some_min(
                     &mut hit_record,
                     &self.leaves[node_ptr.index()].hit(ray, t_min, t_max),
@@ -336,6 +343,45 @@ impl Node {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
     #[inline(always)]
+    fn calc_stacked_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
+        const CHILD_IDS: u64 = (0u64 << 8 * 0)
+            | (1u64 << 8 * 1)
+            | (2u64 << 8 * 2)
+            | (3u64 << 8 * 3)
+            | (4u64 << 8 * 4)
+            | (5u64 << 8 * 5)
+            | (6u64 << 8 * 6)
+            | (7u64 << 8 * 7);
+        // >>
+        const MASK: u64 = (0b111u64 << 8 * 0)
+            | (0b111u64 << 8 * 1)
+            | (0b111u64 << 8 * 2)
+            | (0b111u64 << 8 * 3)
+            | (0b111u64 << 8 * 4)
+            | (0b111u64 << 8 * 5)
+            | (0b111u64 << 8 * 6)
+            | (0b111u64 << 8 * 7);
+        // >>
+        // コメント再掲
+        // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
+        // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
+        // axis_bit_i[child_id]{0} = axis_top{i}
+        // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
+        // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+        let mut mapped: u64 = 0;
+        if ray_is_pos[0b00] == 1 {
+            mapped |= !self.axis_bits_0 & !self.axis_bits_1;
+        }
+        if ray_is_pos[0b01] == 1 {
+            mapped |= !self.axis_bits_0 & self.axis_bits_1;
+        }
+        if ray_is_pos[0b10] == 1 {
+            mapped |= self.axis_bits_0 & !self.axis_bits_1;
+        }
+        assert!((mapped ^ CHILD_IDS) & MASK == mapped ^ CHILD_IDS); // ToDo: debug_assertに変更する
+        mapped ^ CHILD_IDS
+    }
+    #[inline(always)]
     fn push_node_stack(&self, node_stack: &mut NodeStack, ray: &RayAVXInfo, hit_bits: i32) {
         let mut child_id = 0usize;
         child_id ^= 0b001 * ray.dir_sign[self.axis_top];
@@ -391,6 +437,8 @@ impl Node {
                 axis_top: 0,
                 axis_child: [0; 2],
                 axis_gson: [0; 4],
+                axis_bits_0: 0,
+                axis_bits_1: 0,
             }
         }
     }
@@ -452,6 +500,33 @@ impl Node {
                 }
             }
         }
+        self.calc_axis_bits();
+    }
+    fn calc_axis_bits(&mut self) {
+        // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
+        // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
+        // axis_bit_i[child_id]{0} = axis_top{i}
+        // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
+        // axis_bit_i[child_id]{2} = axis_gson[child_id%4]{i}
+        let mut axis_bits_0: u64 = 0;
+        let mut axis_bits_1: u64 = 0;
+        let axis_bits_ref = [&mut axis_bits_0, &mut axis_bits_1];
+        for child_id in 0..8 {
+            let base: u64 = 1u64.shl(child_id * 8);
+            for i in 0..1 {
+                if self.axis_top & 1usize.shl(i) != 0usize {
+                    *axis_bits_ref[i] |= base.shl(0);
+                }
+                if self.axis_child[child_id % 2] & 1usize.shl(i) != 0usize {
+                    *axis_bits_ref[i] |= base.shl(1);
+                }
+                if self.axis_gson[child_id % 4] & 1usize.shl(i) != 0usize {
+                    *axis_bits_ref[i] |= base.shl(2);
+                }
+            }
+        }
+        self.axis_bits_0 = axis_bits_0;
+        self.axis_bits_1 = axis_bits_1;
     }
     fn set_bboxes_array_layout(bboxes: &mut BBoxesArray, child_id: u8, bbox: &Aabb) {
         for min_max in 0..2 {
