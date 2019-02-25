@@ -392,6 +392,7 @@ impl Node {
     }
     #[inline(always)]
     fn calc_stack_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
+        // ToDo: テストコードをかく
         const CHILD_IDS: u64 = (0b000u64 << 8 * 0)
             | (0b100u64 << 8 * 1)
             | (0b010u64 << 8 * 2)
