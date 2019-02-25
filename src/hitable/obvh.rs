@@ -75,9 +75,9 @@ struct Node {
     // along the axis of the bbox of the child.
     bboxes: [[__m256; 3]; 2],
     children: [NodePointer; 8],
-    axis_top: usize,            // Axis dividing left-leaves and right-leaves.
-    axis_child: [usize; 2],     // axis_child[i] = axis dividing children with child_id % 2 == i
-    axis_grand_son: [usize; 4], // axis_child[i] = axis dividing children with child_id % 4 == i
+    axis_top: usize,        // Axis dividing left-leaves and right-leaves.
+    axis_child: [usize; 2], // axis_child[i] = axis dividing children with child_id % 2 == i
+    axis_gson: [usize; 4],  // axis_child[i] = axis dividing children with child_id % 4 == i
 }
 
 impl fmt::Debug for Node {
@@ -91,7 +91,7 @@ impl fmt::Debug for Node {
 left:
   axis: {axis_child_0}
   left:
-    axis: {axis_grand_son_00}
+    axis: {axis_gson_00}
     left:
       bbox: {bbox_000:?}
       ptr: {ptr_000}
@@ -99,7 +99,7 @@ left:
       bbox: {bbox_100:?}
       ptr: {ptr_100}
   right:
-    axis: {axis_grand_son_10}
+    axis: {axis_gson_10}
     left:
       bbox: {bbox_010:?}
       ptr: {ptr_010}
@@ -109,7 +109,7 @@ left:
 right:
   axis: {axis_child_1}
   left:
-    axis: {axis_grand_son_01}
+    axis: {axis_gson_01}
     left:
       bbox: {bbox_001:?}
       ptr: {ptr_001}
@@ -117,7 +117,7 @@ right:
       bbox: {bbox_101:?}
       ptr: {ptr_101}
   right:
-    axis: {axis_grand_son_11}
+    axis: {axis_gson_11}
     left:
       bbox: {bbox_011:?}
       ptr: {ptr_011}
@@ -127,10 +127,10 @@ right:
             axis_top = self.axis_top,
             axis_child_0 = self.axis_child[0],
             axis_child_1 = self.axis_child[1],
-            axis_grand_son_00 = self.axis_grand_son[0b00usize],
-            axis_grand_son_01 = self.axis_grand_son[0b01usize],
-            axis_grand_son_10 = self.axis_grand_son[0b10usize],
-            axis_grand_son_11 = self.axis_grand_son[0b11usize],
+            axis_gson_00 = self.axis_gson[0b00usize],
+            axis_gson_01 = self.axis_gson[0b01usize],
+            axis_gson_10 = self.axis_gson[0b10usize],
+            axis_gson_11 = self.axis_gson[0b11usize],
             bbox_000 = aabbs[0b000usize],
             bbox_001 = aabbs[0b001usize],
             bbox_010 = aabbs[0b010usize],
@@ -306,7 +306,7 @@ impl Hitable for OBVH {
 }
 
 impl Node {
-    /// Calculates whether or not ray hits eight bounding boxes (bboxes) with SIMD.
+    /// Calculates whether or not ray hits eight bounding boxes (bboxes) with AVX.
     /// * `return` - for i in [0..8), return & (1 << i) != 0 <=> the ray hits the i-th bbox.
     unsafe fn hit_core(&self, ray: &RayAVXInfo, t_min: f32, t_max: f32) -> i32 {
         let mut t_min = _mm256_set1_ps(t_min);
@@ -340,7 +340,7 @@ impl Node {
         let mut child_id = 0usize;
         child_id ^= 0b001 * ray.dir_sign[self.axis_top];
         child_id ^= 0b010 * ray.dir_sign[self.axis_child[child_id]];
-        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
@@ -350,7 +350,7 @@ impl Node {
         }
         child_id &= 0b011;
         child_id ^= 0b010;
-        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
@@ -361,7 +361,7 @@ impl Node {
         child_id &= 0b001;
         child_id ^= 0b001;
         child_id ^= 0b010 * ray.dir_sign[self.axis_child[child_id]];
-        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
@@ -371,7 +371,7 @@ impl Node {
         }
         child_id &= 0b011;
         child_id ^= 0b010;
-        child_id ^= 0b100 * ray.dir_sign[self.axis_grand_son[child_id]];
+        child_id ^= 0b100 * ray.dir_sign[self.axis_gson[child_id]];
         if hit_bits & (1i32.shl(child_id)) != 0 {
             node_stack.push(self.children[child_id]);
         }
@@ -390,7 +390,7 @@ impl Node {
                 children: [NodePointer::empty_leaf(); 8],
                 axis_top: 0,
                 axis_child: [0; 2],
-                axis_grand_son: [0; 4],
+                axis_gson: [0; 4],
             }
         }
     }
@@ -431,7 +431,7 @@ impl Node {
                         self.axis_child[child_id as usize] = ptr.axis;
                     } else if depth == 2 {
                         debug_assert!(child_id < 4);
-                        self.axis_grand_son[child_id as usize] = ptr.axis;
+                        self.axis_gson[child_id as usize] = ptr.axis;
                     }
                     Self::from_bvh_node_traverse(
                         self,
