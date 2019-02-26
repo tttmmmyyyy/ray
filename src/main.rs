@@ -51,18 +51,18 @@ impl ColorSum {
                 buffer[idx * 4 + 3] = (255.99 * 1.0) as u8;
             }
         }
-        let _ = image::save_buffer(
-            &Path::new(&format!(
-                "{}{}rays{}secs.png",
-                name,
-                self.count,
-                elapsed_time.as_secs()
-            )),
-            buffer.as_slice(),
-            self.nx as u32,
-            self.ny as u32,
-            image::RGBA(8),
-        );
+        // let _ = image::save_buffer(
+        //     &Path::new(&format!(
+        //         "{}{}rays{}secs.png",
+        //         name,
+        //         self.count,
+        //         elapsed_time.as_secs()
+        //     )),
+        //     buffer.as_slice(),
+        //     self.nx as u32,
+        //     self.ny as u32,
+        //     image::RGBA(8),
+        // );
     }
     #[allow(dead_code)]
     pub fn save_raw(_name: &str) {
@@ -110,11 +110,11 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 400;
-    const IMAGE_HEIGHT: i32 = 400;
+    const IMAGE_WIDTH: i32 = 800;
+    const IMAGE_HEIGHT: i32 = 800;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
     const RAYS_PER_PIXEL: i32 = 200;
-    const THREAD_CNT: i32 = 1;
+    const THREAD_CNT: i32 = 2;
     const REPORT_INTERVAL: i32 = 200;
     const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
