@@ -364,8 +364,6 @@ impl Node {
             | (0b100u64 << 8 * 6)
             | (0b000u64 << 8 * 7);
         // >>
-        // ToDo: child_idの振り方はやはり逆になってしまっていてよろしくないかも。
-        // 優先度の大きいビットを上位ビットにするべきであった。
         const MASK: u64 = (0b111u64 << 8 * 0)
             | (0b111u64 << 8 * 1)
             | (0b111u64 << 8 * 2)
@@ -487,11 +485,6 @@ impl Node {
         }
     }
     fn calc_axis_bits(&mut self, axis_top: usize, axis_child: [usize; 2], axis_gson: [usize; 4]) {
-        // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
-        // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-        // axis_bit_i[child_id]{2} = axis_top{i}
-        // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-        // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
         let mut axis_bits_0: u64 = 0;
         let mut axis_bits_1: u64 = 0;
         let axis_bits_ref = [&mut axis_bits_0, &mut axis_bits_1];
