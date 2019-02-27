@@ -61,28 +61,32 @@ pub struct OBVH {
 }
 
 struct Node {
-    // Each of 8 children is associated with a number called 'child_id' which is in [0..8).
-    // A Node of an OBVH tree can be seen as a binary tree of depth 3, and in this perspective
-    // child_id & (1 << 0) != 0 <=> "Is this children in the left-half of the whole tree (of depth 3)?"
-    // child_id & (1 << 1) != 0 <=> "Is this children in the left-half of the next subtree (of depth 2)?"
-    // child_id & (1 << 2) != 0 <=> "Is this children in the left-half of the minimal subtree (of depth 1)?"
-    // At each inner node, the leaves blow are divided into two groups acccording to
-    // the value X=(center-of-bounding-box)[some-axis].
-    // The child with lesser X is called 'left' and one with greater X is called 'right'.
-    //
-    // When identifying __m256 and [f32; 8] (i.e., talking as if bboxes has type [[[f32; 8]; 3]; 2]),
-    // then bboxes[min_or_max][axis][child_id] = min[0] or max[1] coordinate value
-    // along the axis of the bbox of the child.
+    // OBVHノード。
+    // ノード1つが深さ3の2分木で、8個の子を持つ（childrenフィールド）。
+    // それぞれの子ノードの配列childrenの位置（インデックス）をchild_id（in [0..8)）と呼ぶ。
+    // child_idの第0ビット、第1ビット、第2ビットは、根ノードからどのように進んでその子ノードに到達できるかを表す。
+    // 第0ビットが1（resp. 0）<=> 最初に左（resp. 右）に進む。
+    // 第1ビットが1（resp. 0）<=> 次に左（resp. 右）に進む。
+    // 第2ビットが1（resp. 0）<=> 最後に左（resp. 右）に進む。
+    // 分岐点それぞれ（根1つ、子2つ、孫4つの合計7個ある）には、BVH構築の際に用いた分割軸の情報axis（0=x,1=y,2=zのいずれか）
+    // が付随している。
+    // ある分岐点より左（resp. 右）に格納されている子ノードたちは、軸axisに関して座標値が小さい（resp. 大きい）側である。
+
+    // 各子ノードのバウンディングボックス情報。
+    // __m256と[f32; 8]を同一視し、bboxesフィールドの型が[[[f32; 8]; 3]; 2]であると考えるとき、
+    // bboxes[min_or_max][axis][child_id]は、子chiild_idのバウンディングボックスの、軸axisに沿った座標値の
+    // 最小値（min_or_max=0のとき）か最大値（min_or_max=1のとき）。
     bboxes: [[__m256; 3]; 2],
     children: [NodePointer; 8],
-    // axis_top: usize,        // Axis dividing left-leaves and right-leaves.
-    // axis_child: [usize; 2], // axis_child[i] = axis dividing children with child_id % 2 == i
-    // axis_gson: [usize; 4],  // axis_child[i] = axis dividing children with child_id % 4 == i
-    // axis_bit_i (i=0,1)を配列u8[8]とみなすとする（リトルエンディアンでtransmuteしたものとみなす）。
-    // axis_bit_i[child_id]の値は[0,8)の値（=下位3bitのみが意味を持つ）であって、
-    // axis_bit_i[child_id]{2} = axis_top{i}
-    // axis_bit_i[child_id]{1} = axis_child[child_id%2]{i}
-    // axis_bit_i[child_id]{0} = axis_gson[child_id%4]{i}
+    // 各分岐点における分割軸情報。
+    // axis_bit_i（i=0,1）をサイズ8のu8配列とみなすとする（リトルエンディアン）。
+    // それぞれのaxis_bit_i[child_id]の値は下位3bitのみが意味を持ち、x{i}でxの第iビットを表すとき、
+    // axis_bit_i[child_id]{2} = (根からchild_idに到達する経路における、1番目の分岐点の分割軸){i}
+    //   child_idに依存しない。
+    // axis_bit_i[child_id]{1} = (根からchild_idに到達する経路における、2番目の分岐点の分割軸){i}
+    //   child_idを2で割った余りにだけ依存。
+    // axis_bit_i[child_id]{0} = (根からchild_idに到達する経路における、3番目の分岐点の分割軸){i}
+    //   child_idを4で割った余りにだけ依存。
     axis_bits_0: u64,
     axis_bits_1: u64,
 }
