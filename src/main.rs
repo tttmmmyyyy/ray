@@ -51,18 +51,18 @@ impl ColorSum {
                 buffer[idx * 4 + 3] = (255.99 * 1.0) as u8;
             }
         }
-        // let _ = image::save_buffer(
-        //     &Path::new(&format!(
-        //         "{}{}rays{}secs.png",
-        //         name,
-        //         self.count,
-        //         elapsed_time.as_secs()
-        //     )),
-        //     buffer.as_slice(),
-        //     self.nx as u32,
-        //     self.ny as u32,
-        //     image::RGBA(8),
-        // );
+        let _ = image::save_buffer(
+            &Path::new(&format!(
+                "{}{}rays{}secs.png",
+                name,
+                self.count,
+                elapsed_time.as_secs()
+            )),
+            buffer.as_slice(),
+            self.nx as u32,
+            self.ny as u32,
+            image::RGBA(8),
+        );
     }
     #[allow(dead_code)]
     pub fn save_raw(_name: &str) {
@@ -89,13 +89,13 @@ fn trace_rays(
                 let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
                 let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
                 let ray = scene.camera.get_ray(u, v, &mut rng);
-                // let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */, false);
+                let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */, false);
                 // 衝突計算ベンチマークコード
-                let col = if scene.hitables.hit(&ray, 0.0001, std::f32::MAX).is_none() {
-                    Vec3::new(0.0, 0.0, 0.0)
-                } else {
-                    Vec3::new(1.0, 1.0, 1.0)
-                };
+                // let col = if scene.hitables.hit(&ray, 0.0001, std::f32::MAX).is_none() {
+                //     Vec3::new(0.0, 0.0, 0.0)
+                // } else {
+                //     Vec3::new(1.0, 1.0, 1.0)
+                // };
                 let idx = (i + (ny - j - 1) * nx) as usize;
                 color_sum.sum[idx] += col;
             }
@@ -110,8 +110,8 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 800;
-    const IMAGE_HEIGHT: i32 = 800;
+    const IMAGE_WIDTH: i32 = 100;
+    const IMAGE_HEIGHT: i32 = 100;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
     const RAYS_PER_PIXEL: i32 = 200;
     const THREAD_CNT: i32 = 2;
@@ -139,11 +139,8 @@ fn main() {
     // let scene = scenes::get(ScenesType::CornellBox, aspect);
     // let scene = scenes::get(ScenesType::ManySpheres, aspect);
     let scene = scenes::get(ScenesType::Teapot, aspect);
-    println!(
-        "Scene constructed. ({:.3} secs elapsed)",
-        duration_to_secs(&start_time.elapsed())
-    );
-    let render_start_time = Instant::now();
+    let scene_time = duration_to_secs(&start_time.elapsed());
+    println!("Scene constructed. ({:.3} secs elapsed)", scene_time);
     let rays_per_thread = RAYS_PER_PIXEL / THREAD_CNT;
     crossbeam::scope(|scope| {
         let (tx, cx) = channel::<ColorSum>();
@@ -188,10 +185,11 @@ fn main() {
         save_thread.join().unwrap();
     })
     .unwrap();
+    let elapsed = duration_to_secs(&start_time.elapsed());
     println!(
-        "Completed. ({:.3} secs elapsed, {:.3} for rendering)",
-        duration_to_secs(&start_time.elapsed()),
-        duration_to_secs(&render_start_time.elapsed())
+        "Completed. ({:.3} secs elapsed, {:.3} secs for rendering)",
+        elapsed,
+        elapsed - scene_time
     );
 }
 
