@@ -357,8 +357,9 @@ impl Node {
         unsafe { self.hit_core(ray, t_min, t_max) }
     }
     #[inline(always)]
+    /// それぞれの子ノードのトラバースにおける優先度を求める。
+    /// `return` - リトルエンディアンで[u8; 8]と同一視するとき、return[child_id] = 子child_idの優先度（[0..8)）
     fn calc_stack_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
-        // ToDo: テストコードをかく
         const CHILD_IDS: u64 = (0b111u64 << 8 * 0)
             | (0b011u64 << 8 * 1)
             | (0b101u64 << 8 * 2)
