@@ -327,8 +327,8 @@ impl Hitable for OBVH {
 }
 
 impl Node {
-    /// Calculates whether or not ray hits eight bounding boxes (bboxes) with AVX.
-    /// * `return` - for i in [0..8), return & (1 << i) != 0 <=> the ray hits the i-th bbox.
+    /// レイがぞれぞれのバウンディングボックスにヒットしているか返す。
+    /// * `return` - 各i in [0..8)に対し、returnの第iビット =「レイがi番目にヒットしているかどうか（true=1, false=0）」
     unsafe fn hit_core(&self, ray: &RayAVXInfo, t_min: f32, t_max: f32) -> i32 {
         let mut t_min = _mm256_set1_ps(t_min);
         let mut t_max = _mm256_set1_ps(t_max);
