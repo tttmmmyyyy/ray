@@ -627,12 +627,15 @@ impl OBVH {
 
 #[cfg(test)]
 mod tests {
+    use super::BBoxesArray;
     use super::Node;
+    use super::NodePointer;
     use super::OBVH;
     use crate::hitable::bvh_node::BvhNode;
     use crate::material::lambertian::Lambertian;
     use crate::obj_file::ObjFile;
     use crate::texture::constant::ConstantTexture;
+    use itertools::iproduct;
     #[cfg(target_arch = "x86")]
     use std::arch::x86::*;
     #[cfg(target_arch = "x86_64")]
@@ -667,6 +670,97 @@ mod tests {
         let bvh_node = Arc::new(BvhNode::new(obj.to_triangles(material.clone()), 0.0, 1.0));
         let obvh = Arc::new(OBVH::from_bvh_node(bvh_node));
         println!("{:?}", obvh);
+    }
+    fn traverse_priority_answer(
+        top_axis: usize,
+        child_axis: &[usize; 2],
+        gson_axis: &[usize; 4],
+        ray_is_pos: &[usize; 3],
+        child_id: u8,
+        depth: i32,
+        priorities: &mut [u8; 8],
+        count: &mut u8,
+    ) {
+        if depth == 3 {
+            priorities[child_id as usize] = 7 - *count;
+            *count += 1;
+        } else {
+            let left_first = if depth == 0 {
+                ray_is_pos[top_axis] == 1
+            } else if depth == 1 {
+                ray_is_pos[child_axis[(child_id % 2) as usize]] == 1
+            } else {
+                assert_eq!(depth, 2);
+                ray_is_pos[gson_axis[(child_id % 4) as usize]] == 1
+            };
+            let mut first_child_id = child_id | (1u8 << depth); // >>
+            let mut second_child_id = child_id;
+            if !left_first {
+                std::mem::swap(&mut first_child_id, &mut second_child_id);
+            }
+            traverse_priority_answer(
+                top_axis,
+                child_axis,
+                gson_axis,
+                ray_is_pos,
+                first_child_id,
+                depth + 1,
+                priorities,
+                count,
+            );
+            traverse_priority_answer(
+                top_axis,
+                child_axis,
+                gson_axis,
+                ray_is_pos,
+                second_child_id,
+                depth + 1,
+                priorities,
+                count,
+            );
+        }
+    }
+    #[test]
+    fn traverse_priority() {
+        for (
+            top_axis_0,
+            child_axis_0,
+            child_axis_1,
+            gson_axis_0,
+            gson_axis_1,
+            gson_axis_2,
+            gson_axis_3,
+        ) in iproduct!(0..3, 0..3, 0..3, 0..3, 0..3, 0..3, 0..3)
+        {
+            for (ray_is_pos_x, ray_is_pos_y, ray_is_pos_z) in iproduct!(0..2, 0..2, 0..2) {
+                let mut node = Node {
+                    bboxes: Node::load_bboxes(&BBoxesArray::empty()),
+                    children: [NodePointer::empty_leaf(); 8],
+                    axis_bits_0: 0,
+                    axis_bits_1: 0,
+                };
+                node.calc_axis_bits(
+                    top_axis_0,
+                    [child_axis_0, child_axis_1],
+                    [gson_axis_0, gson_axis_1, gson_axis_2, gson_axis_3],
+                );
+                let res = node.calc_stack_indices(&[ray_is_pos_x, ray_is_pos_y, ray_is_pos_z]);
+                let mut ans = [0u8; 8];
+                traverse_priority_answer(
+                    top_axis_0,
+                    &[child_axis_0, child_axis_1],
+                    &[gson_axis_0, gson_axis_1, gson_axis_2, gson_axis_3],
+                    &[ray_is_pos_x, ray_is_pos_y, ray_is_pos_z],
+                    0,
+                    0,
+                    &mut ans,
+                    &mut 0,
+                );
+                for i in 0..8 {
+                    assert_eq!(ans[i], (res >> (i * 8)) as u8);
+                }
+            }
+        }
     }
 }
 
