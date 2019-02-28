@@ -271,10 +271,10 @@ impl Hitable for OBVH {
                 let node = &self.inners[node_ptr.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
                 debug_assert!(hit_bits < 256);
-                let stack_indices = node.calc_stack_indices(&ray_avx.dir_sign);
+                let priorities = node.calc_traverse_priority(&ray_avx.dir_sign);
                 let mut ordered = [0usize; 8];
                 for child_id in 0..8 {
-                    ordered[stack_indices.shr(child_id * 8) as usize % 8] = child_id;
+                    ordered[priorities.shr(child_id * 8) as usize] = child_id;
                 }
                 for i in 0..8 {
                     let child_id = ordered[i];
@@ -359,7 +359,7 @@ impl Node {
     #[inline(always)]
     /// それぞれの子ノードのトラバースにおける優先度を求める。
     /// `return` - リトルエンディアンで[u8; 8]と同一視するとき、return[child_id] = 子child_idの優先度（[0..8)）
-    fn calc_stack_indices(&self, ray_is_pos: &[usize; 3]) -> u64 {
+    fn calc_traverse_priority(&self, ray_is_pos: &[usize; 3]) -> u64 {
         const CHILD_IDS: u64 = (0b111u64 << 8 * 0)
             | (0b011u64 << 8 * 1)
             | (0b101u64 << 8 * 2)
@@ -744,7 +744,7 @@ mod tests {
                     [child_axis_0, child_axis_1],
                     [gson_axis_0, gson_axis_1, gson_axis_2, gson_axis_3],
                 );
-                let res = node.calc_stack_indices(&[ray_is_pos_x, ray_is_pos_y, ray_is_pos_z]);
+                let res = node.calc_traverse_priority(&[ray_is_pos_x, ray_is_pos_y, ray_is_pos_z]);
                 let mut ans = [0u8; 8];
                 traverse_priority_answer(
                     top_axis_0,
