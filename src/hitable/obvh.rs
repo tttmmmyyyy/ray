@@ -274,7 +274,7 @@ impl Hitable for OBVH {
                 let priorities = node.calc_traverse_priority(&ray_avx.dir_sign);
                 let mut ordered = [0usize; 8];
                 for child_id in 0..8 {
-                    ordered[priorities.shr(child_id * 8) as usize] = child_id;
+                    ordered[priorities.shr(child_id * 8) as u8 as usize] = child_id;
                 }
                 for i in 0..8 {
                     let child_id = ordered[i];
