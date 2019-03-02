@@ -111,10 +111,6 @@ impl BvhNode {
             let right = Arc::new(BvhNode::new(right_list, time_0, time_1));
             let right_rec = BvhNodeConstructionRecord::inner(right.clone());
             let sep_axis = axis as u8;
-            // let sep_axis = left_rec.bbox().most_separating_axis(&right_rec.bbox());
-            // if left_rec.bbox().center()[sep_axis as usize]
-            //     <= right_rec.bbox().center()[sep_axis as usize]
-            // {
             (
                 left.clone(),
                 left_rec.clone(),
@@ -122,15 +118,6 @@ impl BvhNode {
                 right_rec.clone(),
                 sep_axis,
             )
-            // } else {
-            //     (
-            //         right.clone(),
-            //         right_rec.clone(),
-            //         left.clone(),
-            //         left_rec.clone(),
-            //         sep_axis,
-            //     )
-            // }
         };
         let left_box = left.bounding_box(time_0, time_1).unwrap();
         let right_box = right.bounding_box(time_0, time_1).unwrap();
