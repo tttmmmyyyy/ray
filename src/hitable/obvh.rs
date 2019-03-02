@@ -56,6 +56,7 @@ impl RayAVXInfo {
 
 /// Octa Bounding Volume Hierarchy
 pub struct OBVH {
+    bbox: Aabb,
     leaves: Vec<Arc<Hitable>>, // leaf-nodes.
     inners: Vec<Node>,         // inner nodes. inners[0] is the root node.
 }
@@ -248,6 +249,9 @@ impl fmt::Display for NodePointer {
 
 impl Hitable for OBVH {
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
+        if !self.bbox.hit(ray, t_min, t_max) {
+            return None;
+        }
         let ray_avx = RayAVXInfo::from_ray(ray);
         let mut node_stack = NodeStack::empty();
         node_stack.push(NodePointer::root());
@@ -573,12 +577,13 @@ impl OBVH {
         Self::add_inner(
             &BvhNodeConstructionRecord::Inner {
                 bbox: bvh_node.aabb,
-                ptr: bvh_node,
+                ptr: bvh_node.clone(),
             },
             &mut inners,
             &mut leaves,
         );
         Self {
+            bbox: bvh_node.aabb,
             leaves: leaves,
             inners: inners,
         }
@@ -669,7 +674,17 @@ mod tests {
             .groups[0];
         let bvh_node = Arc::new(BvhNode::new(obj.to_triangles(material.clone()), 0.0, 1.0));
         let obvh = Arc::new(OBVH::from_bvh_node(bvh_node));
-        println!("{:?}", obvh);
+        assert_eq!(obvh.inners.len(), 1);
+        assert_eq!(obvh.leaves.len(), 8);
+        let node = &obvh.inners[0];
+        assert_eq!(
+            node.axis_bits_0,
+            0b0000000000000000000000000000000000000000000000000000000000000000
+        );
+        assert_eq!(
+            node.axis_bits_1,
+            0b0000001000000010000000100000001000000010000000100000001000000010
+        );
     }
     fn traverse_priority_answer(
         top_axis: usize,
