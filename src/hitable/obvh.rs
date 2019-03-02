@@ -526,7 +526,6 @@ impl Node {
         }
     }
     fn eight_aabb_from_array_layout(out: &mut [Aabb; 8], array: &[[[f32; 8]; 3]; 2]) {
-        // ToDo: write a test.
         for min_max in 0..2 {
             for axis in 0..3 {
                 for child_id in 0..8 {
@@ -567,7 +566,6 @@ impl Node {
             res
         }
     }
-    // ToDo: write a test.
 }
 
 impl OBVH {
