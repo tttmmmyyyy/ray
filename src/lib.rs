@@ -38,7 +38,7 @@ pub fn next_event_estimation(
     let pdf = HitablePdf::new(light, &rec.point);
     let dir = pdf.generate(rng);
     let shadow_ray = Ray::new(&rec.point, &dir, ray.time);
-    let light_hit_rec = light.hit(&shadow_ray, 0.0, std::f32::MAX); // ToDo: NEEのためにhit_recの全情報を計算する必要はない。
+    let light_hit_rec = light.hit(&shadow_ray, 0.0, std::f32::MAX);
     if light_hit_rec.is_none() {
         return;
     }
