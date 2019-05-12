@@ -320,7 +320,8 @@ impl Hitable for OBVH {
         false
     }
     fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<Aabb> {
-        unimplemented!()
+        // ToDo: self.bboxは事前計算しておいたもの。そのときに使ったtime_0とtime_1と一致していないとうまく動かない。
+        Some(self.bbox)
     }
     fn random_direction_from(&self, _origin: &Vec3, _rng: &mut RandGen) -> Vec3 {
         panic!("random_direction_from called for OBHV");
