@@ -1,4 +1,3 @@
-use rand;
 use ray;
 use ray::affine::Affine;
 use ray::aliases::Vec3;

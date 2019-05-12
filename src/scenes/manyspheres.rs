@@ -5,7 +5,6 @@ use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
 use ray::hitable::bvh_node::BvhNode;
-use ray::hitable::empty::Empty;
 use ray::hitable::hitable_list::HitableList;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;

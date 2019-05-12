@@ -17,9 +17,7 @@ pub mod util;
 
 use crate::aliases::{RandGen, Vec3};
 use crate::hit_record::HitRecord;
-use crate::hitable::Hitable;
 use crate::pdf::hitable::HitablePdf;
-use crate::pdf::mixture::MixturePdf;
 use crate::pdf::{Pdf, SingularPdf};
 use crate::ray::Ray;
 use crate::scene::Scene;

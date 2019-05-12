@@ -1,4 +1,3 @@
-use rand;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
@@ -9,9 +8,7 @@ use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
 use ray::hitable::Hitable;
 use ray::material::diffuse_light::DiffuseLight;
-use ray::material::glass::Glass;
 use ray::material::lambertian::Lambertian;
-use ray::material::phong::Phong;
 use ray::scene::Scene;
 use ray::texture::checker::CheckerTexture;
 use ray::texture::constant::ConstantTexture;
@@ -27,7 +24,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         &Vec3::new(0.0, 0.1, 0.1),
     ));
     let lambert_checker = Arc::new(Lambertian::new(checker.clone()));
-    let _phong_checker = Arc::new(Phong::new(checker.clone(), 0.5, 0.5, 50, 0.5));
     let wall_mat = lambert_checker.clone();
     objs.push(Arc::new(Rectangle::new(
         &Vec3::new(-L, -0.0, -L),
@@ -54,11 +50,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
     ));
     objs.push(light.clone()); // light
-    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
-        232.0 / 255.0,
-        200.0 / 255.0,
-        0.5,
-    )))));
     let texture = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 0.0, 0.0,
     )))));

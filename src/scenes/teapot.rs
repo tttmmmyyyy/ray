@@ -1,4 +1,3 @@
-use rand;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
@@ -62,13 +61,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         0.5,
     )))));
     let glass = Arc::new(Glass::new(2.2, 0.0));
-    let phong = Arc::new(Phong::new(
-        Arc::new(ConstantTexture::rgb(232.0 / 255.0, 200.0 / 255.0, 0.5)),
-        0.5,
-        0.5,
-        50,
-        0.5,
-    ));
     let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
         .unwrap()
         .groups[0];
