@@ -39,6 +39,11 @@ pub fn next_event_estimation(
     let dir = pdf.generate(rng);
     let shadow_ray = Ray::new(&rec.point, &dir, ray.time);
     let light_hit_rec = light.hit(&shadow_ray, 0.0, std::f32::MAX);
+    // このhitは無駄な計算である。dirはpdf.generateで作ったものなので、
+    // 必ずhitし、その衝突点も衝突時刻もわかっているはず。
+    // ・衝突点はemitを計算するために必要。
+    // ・衝突時刻は「シャドウレイを遮るものがないか？」を計算するために必要。
+    // 一方で、無駄な計算を含むものの、単純で堅牢で拡張性の高い実装であるとは思えるので、変えるかどうか悩む。
     if light_hit_rec.is_none() {
         return;
     }
