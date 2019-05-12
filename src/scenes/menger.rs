@@ -12,11 +12,9 @@ use ray::material::diffuse_light::DiffuseLight;
 use ray::material::glass::Glass;
 use ray::material::lambertian::Lambertian;
 use ray::material::phong::Phong;
-use ray::obj_file::ObjFile;
 use ray::scene::Scene;
 use ray::texture::checker::CheckerTexture;
 use ray::texture::constant::ConstantTexture;
-use std::path::Path;
 use std::sync::Arc;
 
 pub fn scene(aspect_ratio: f32) -> Scene {
@@ -61,40 +59,28 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         200.0 / 255.0,
         0.5,
     )))));
-    let glass = Arc::new(Glass::new(2.2, 0.0));
-    let phong = Arc::new(Phong::new(
-        Arc::new(ConstantTexture::rgb(232.0 / 255.0, 200.0 / 255.0, 0.5)),
-        0.5,
-        0.5,
-        50,
-        0.5,
+    let texture = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+        1.0, 0.0, 0.0,
+    )))));
+    let mut cube_recs = Vec::new();
+    cube_recs.append(&mut ray::hitable::cube_rectangles(
+        &Vec3::new(-0.5, 0.0, -0.5),
+        &Vec3::new(1.0, 1.0, 1.0),
+        texture.clone(),
     ));
-    let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
-        .unwrap()
-        .groups[0];
-    teapot.unify_vertex();
-    teapot.set_smooth_normals();
-    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(glass.clone()), 0.0, 1.0));
-    // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
-    //     .unwrap()
-    //     .groups[0];
-    // bunny.set_smooth_normals();
-    // let bunny = Arc::new(Transform::new(
-    //     Arc::new(Transform::new(
-    //         Arc::new(BvhNode::new(bunny.to_triangles(glass.clone()), 0.0, 1.0)),
-    //         &Affine::translate(
-    //             &(Vec3::new(1.0 / 20.0, 0.0, 0.0) + Vec3::new(-1.0 / 20.0, 0.0, -1.0 / 20.0)),
-    //         ),
-    //         0.0,
-    //         1.0,
-    //     )),
-    //     &Affine::scale(22.0, &Vec3::new(0.0, 0.0, 0.0)),
-    //     0.0,
-    //     1.0,
-    // ));
-    let teapot = Arc::new(OBVH::from_bvh_node(teapot));
-    objs.push(teapot);
-    // objs.push(bunny);
+    cube_recs.append(&mut ray::hitable::cube_rectangles(
+        &Vec3::new(0.5, 0.0, -0.5),
+        &Vec3::new(1.0, 1.0, 1.0),
+        texture.clone(),
+    ));
+    cube_recs.append(&mut ray::hitable::cube_rectangles(
+        &Vec3::new(-0.5, 1.0, -0.5),
+        &Vec3::new(1.0, 1.0, 1.0),
+        texture.clone(),
+    ));
+    let cube = Arc::new(BvhNode::new(cube_recs, 0.0, 1.0));
+    let cube = Arc::new(OBVH::from_bvh_node(cube));
+    objs.push(cube);
     let objs = Arc::new(HitableList::new(objs));
     let look_from = Vec3::new(0.0, 3.0, 10.0);
     let look_at = Vec3::new(0.0, 1.0, 0.0);
