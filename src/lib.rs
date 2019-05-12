@@ -24,33 +24,6 @@ use crate::pdf::{Pdf, SingularPdf};
 use crate::ray::Ray;
 use crate::scene::Scene;
 
-// fn mix_importance_hitable_pdf<'m, 's, 'p>(
-//     material_pdf: &'m dyn Pdf,
-//     weight_imp_hit_pdf: &'s Option<(f32, HitablePdf)>,
-// ) -> MixturePdf<'s, 'm> {
-//     match weight_imp_hit_pdf {
-//         Some((weight, imp_hit_pdf)) => {
-//             debug_assert!(*weight > 0.0);
-//             MixturePdf::new(*weight, imp_hit_pdf, material_pdf)
-//         }
-//         None => MixturePdf::zero(material_pdf),
-//     }
-// }
-
-// fn create_importance_hitable_pdf<'s>(
-//     scene: &'s Scene,
-//     hit_pt: &Vec3,
-// ) -> Option<(f32, HitablePdf<'s>)> {
-//     if scene.importance_weight > 0.0 {
-//         Some((
-//             scene.importance_weight,
-//             HitablePdf::new(&(*scene.importance), hit_pt),
-//         ))
-//     } else {
-//         None
-//     }
-// }
-
 pub fn next_event_estimation(
     ray: &Ray,
     rec: &HitRecord,
