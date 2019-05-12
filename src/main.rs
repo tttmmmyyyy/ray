@@ -89,13 +89,7 @@ fn trace_rays(
                 let u = (i as f32 + rng.gen::<f32>()) / nx as f32;
                 let v = (j as f32 + rng.gen::<f32>()) / ny as f32;
                 let ray = scene.camera.get_ray(u, v, &mut rng);
-                // let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */, false);
-                // 衝突計算ベンチマークコード
-                let col = if scene.hitables.hit(&ray, 0.0001, std::f32::MAX).is_none() {
-                    Vec3::new(0.0, 0.0, 0.0)
-                } else {
-                    Vec3::new(1.0, 1.0, 1.0)
-                };
+                let col = ray::calc_color(&ray, scene, &mut rng, 50 /* depth */, false);
                 let idx = (i + (ny - j - 1) * nx) as usize;
                 color_sum.sum[idx] += col;
             }
@@ -110,11 +104,11 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 800;
-    const IMAGE_HEIGHT: i32 = 800;
+    const IMAGE_WIDTH: i32 = 200;
+    const IMAGE_HEIGHT: i32 = 200;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
     const RAYS_PER_PIXEL: i32 = 200;
-    const THREAD_CNT: i32 = 2;
+    const THREAD_CNT: i32 = 4;
     const REPORT_INTERVAL: i32 = 200;
     const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
