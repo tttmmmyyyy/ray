@@ -67,11 +67,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         4,
         lambert.clone(),
     );
-    println!(
-        "[menger.rs] cube_recs={}, sizeof(Rectangle)={}",
-        cube_recs.len(),
-        std::mem::size_of::<Rectangle>()
-    );
     let cube = Arc::new(BVH::new(cube_recs, 0.0, 1.0));
     // let cube = Arc::new(OBVH::from_bvh_node(cube));
     let cube = Arc::new(Transform::new(
