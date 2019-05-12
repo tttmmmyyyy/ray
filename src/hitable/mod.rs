@@ -1,7 +1,9 @@
+mod bvh;
 pub mod bvh_node;
 pub mod empty;
 pub mod hitable_list;
 pub mod hitable_ref;
+mod node_pointer;
 pub mod obvh;
 pub mod rectangle;
 pub mod sphere;

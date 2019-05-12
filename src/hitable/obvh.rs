@@ -2,6 +2,7 @@ use crate::aabb::Aabb;
 use crate::aliases::{RandGen, Vec3};
 use crate::hit_record::HitRecord;
 use crate::hitable::bvh_node::{BvhNode, BvhNodeConstructionRecord};
+use crate::hitable::node_pointer::NodePointer;
 use crate::hitable::Hitable;
 use crate::ray::Ray;
 #[cfg(target_arch = "x86")]
@@ -163,12 +164,6 @@ right:
     }
 }
 
-/// A "pointer" to a Node
-#[derive(Clone, Copy)]
-struct NodePointer {
-    info: u32,
-}
-
 const NODE_STACK_UPPER_BOUND: usize = 64;
 
 struct NodeStack {
@@ -197,39 +192,6 @@ impl NodeStack {
     }
     fn len(&self) -> usize {
         self.end
-    }
-}
-
-impl NodePointer {
-    pub fn root() -> Self {
-        NodePointer { info: 0 }
-    }
-    pub fn index(&self) -> usize {
-        debug_assert!(!self.is_empty_leaf());
-        (self.info & !(1u32.shl(31) as u32)) as usize
-    }
-    pub fn is_leaf(&self) -> bool {
-        self.info & 1u32.shl(31) != 0u32
-    }
-    pub fn is_empty_leaf(&self) -> bool {
-        self.info == std::u32::MAX
-    }
-    pub fn empty_leaf() -> Self {
-        Self {
-            info: std::u32::MAX,
-        }
-    }
-    #[allow(dead_code)]
-    pub fn is_inner(&self) -> bool {
-        self.info & 1u32.shl(31) == 0u32
-    }
-    pub fn new(is_leaf: bool, index: usize) -> Self {
-        debug_assert!(index < std::u32::MAX.shr(1) as usize);
-        let mut info = index as u32;
-        if is_leaf {
-            info = info | 1u32.shl(31);
-        }
-        NodePointer { info: info }
     }
 }
 

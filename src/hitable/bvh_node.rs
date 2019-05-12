@@ -133,7 +133,7 @@ impl BvhNode {
         }
     }
     /// returns (axis, index).
-    fn search_splitting_axis_index(
+    pub fn search_splitting_axis_index(
         bboxes: &mut Vec<Aabb> // sorted along axis after called.
     ) -> (usize, usize) {
         let mut min_axis = 0;
