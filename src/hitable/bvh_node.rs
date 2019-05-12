@@ -10,7 +10,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum BvhNodeConstructionRecord {
     Inner { ptr: Arc<BvhNode>, bbox: Aabb },
-    Leaf { ptr: Arc<dyn Hitable>, bbox: Aabb }, // must not empty
+    Leaf { ptr: Arc<Hitable>, bbox: Aabb }, // must not empty
 }
 
 impl Default for BvhNodeConstructionRecord {
