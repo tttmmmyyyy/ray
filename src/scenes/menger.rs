@@ -65,7 +65,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let cube_recs = menger_rectangles(
         &Vec3::new(-2.0, 0.0, -2.0),
         &Vec3::new(4.0, 4.0, 4.0),
-        1,
+        5,
         lambert.clone(),
         0,
     );
@@ -81,11 +81,16 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         1.0,
     ));
     objs.push(cube);
+    let look_along = na::normalize(
+        &(nalgebra::Rotation3::new(Vec3::new(0.0, std::f32::consts::FRAC_PI_6, 0.0))
+            * Vec3::new(3.0, 1.0, -1.0)),
+    );
     let objs = Arc::new(HitableList::new(objs));
-    let look_from = Vec3::new(0.0, 7.5, 10.0);
-    let look_at = Vec3::new(0.0, 2.0, 0.0);
-    // let look_from = Vec3::new(0.0, 2.0, 0.0);
-    // let look_at = Vec3::new(1.0, 2.0, 0.0);
+    // let look_from = Vec3::new(0.0, 7.5, 10.0);
+    // let look_at = Vec3::new(0.0, 2.0, 0.0);
+    let look_from =
+        Vec3::new(0.0, 2.0, 0.0) - look_along * f32::sqrt(11.0) * 2.0 / 3.0 + 0.1 * look_along;
+    let look_at = look_from + look_along;
     let dist_to_focus = 5.0;
     let vfov = 40.0;
     let camera = Camera::new_time(
