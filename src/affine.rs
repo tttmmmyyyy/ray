@@ -6,7 +6,7 @@ use nalgebra;
 pub struct Affine {
     a: Mat3,
     b: Vec3,
-    a_inv: Mat3, // the inverce matrix of a
+    a_inv: Mat3, // the inverse matrix of a
     a_det: f32,  // the deteminant of a
 }
 
