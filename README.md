@@ -3,3 +3,4 @@ A simple ray tracer written in Rust. Many designs and logics are following Peter
 
 ## Results
 <img src="https://github.com/tttmmmyyyy/ray/raw/master/images/image0.png" width=49%><img src="https://github.com/tttmmmyyyy/ray/raw/master/images/image1.png" width=49%>
+<img src="https://github.com/tttmmmyyyy/ray/raw/master/images/menger.png" width=49%>
