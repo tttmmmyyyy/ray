@@ -23,7 +23,7 @@ impl Default for Node {
 
 pub struct BVH<L> {
     leaves: Vec<L>,    // leaf-nodes.
-    inners: Vec<Node>, // inner nodes. inners[0] is the root node. // ToDo: こうなっているように気をつけること。
+    inners: Vec<Node>, // inner nodes. inners[0] is the root node.
     bbox: Aabb,
 }
 
