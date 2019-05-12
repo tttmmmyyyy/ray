@@ -58,15 +58,14 @@ pub fn next_event_estimation(
     light_out: &mut Vec3,
     rng: &mut RandGen,
 ) {
-    // ToDo: 改善する。現状は実験的雑実装。
     if scene.light.is_none() {
         return;
     }
-    let light = &**(scene.light.as_ref().unwrap()); // ToDo: かっこいるの？
+    let light = &**(scene.light.as_ref().unwrap());
     let pdf = HitablePdf::new(light, &rec.point);
     let dir = pdf.generate(rng);
     let shadow_ray = Ray::new(&rec.point, &dir, ray.time);
-    let light_hit_rec = light.hit(&shadow_ray, 0.0, std::f32::MAX);
+    let light_hit_rec = light.hit(&shadow_ray, 0.0, std::f32::MAX); // ToDo: NEEのためにhit_recの全情報を計算する必要はない。
     if light_hit_rec.is_none() {
         return;
     }

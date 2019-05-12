@@ -31,7 +31,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let lambert_checker = Arc::new(Lambertian::new(checker.clone()));
     let _phong_checker = Arc::new(Phong::new(checker.clone(), 0.5, 0.5, 50, 0.5));
     let wall_mat = lambert_checker.clone();
-    // Lambertian::boxed(ConstantTexture::boxed(&Vec3::new(0.9, 0.9, 0.9))),
     objs.push(Arc::new(Rectangle::new(
         &Vec3::new(-L, -0.0, -L),
         &Vec3::new(0.0, -0.0, 2.0 * L),
@@ -113,7 +112,6 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         0.0, // time_0
         1.0, // time_1
     );
-    // let bg = Arc::new(AmbientLight::new(&Vec3::new(0.75, 0.85, 1.0)));
     let bg = Arc::new(AmbientLight::new(&Vec3::new(0.0, 0.0, 0.0)));
     Scene {
         hitables: objs,

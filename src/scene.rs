@@ -6,6 +6,9 @@ use crate::ray::Ray;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+/// シーン
+/// * light - Next Event Estimation の対象となる光源。
+/// lightはhitablesにも入れておかないと、NEEを使わない経路（カメラに直接光源が入るなど）に反映されなくなり不適切な結果になる。
 pub struct Scene {
     pub hitables: Arc<Hitable>, // rendered hitables
     pub light: Option<Arc<Hitable>>,
