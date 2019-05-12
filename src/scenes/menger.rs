@@ -4,6 +4,7 @@ use ray::affine::Affine;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
+use ray::hitable::bvh::BVH;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::hitable_list::HitableList;
 use ray::hitable::obvh::OBVH;
@@ -12,6 +13,7 @@ use ray::hitable::sphere::Sphere;
 use ray::hitable::transform::Transform;
 use ray::hitable::Hitable;
 use ray::material::diffuse_light::DiffuseLight;
+use ray::material::glass::Glass;
 use ray::material::lambertian::Lambertian;
 use ray::material::Material;
 use ray::scene::Scene;
@@ -55,17 +57,23 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
     ));
     objs.push(light.clone()); // light
-    let texture = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 0.8, 0.8,
     )))));
+    let _glass = Arc::new(Glass::new(2.0, 0.0));
     let cube_recs = menger_rectangles(
         &Vec3::new(-2.0, 0.0, -2.0),
         &Vec3::new(4.0, 4.0, 4.0),
         4,
-        texture.clone(),
+        lambert.clone(),
     );
-    let cube = Arc::new(BvhNode::new(cube_recs, 0.0, 1.0));
-    let cube = Arc::new(OBVH::from_bvh_node(cube));
+    println!(
+        "[menger.rs] cube_recs={}, sizeof(Rectangle)={}",
+        cube_recs.len(),
+        std::mem::size_of::<Rectangle>()
+    );
+    let cube = Arc::new(BVH::new(cube_recs, 0.0, 1.0));
+    // let cube = Arc::new(OBVH::from_bvh_node(cube));
     let cube = Arc::new(Transform::new(
         cube,
         &Affine::rotation(
@@ -106,7 +114,7 @@ fn menger_rectangles(
     size: &Vec3,
     depth: usize,
     texture: Arc<Material>,
-) -> Vec<Arc<Hitable>> {
+) -> Vec<Rectangle> {
     if depth == 0 {
         return ray::hitable::cube_rectangles(pos, size, texture.clone());
     }

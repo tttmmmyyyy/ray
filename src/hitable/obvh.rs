@@ -543,6 +543,12 @@ impl OBVH {
             &mut inners,
             &mut leaves,
         );
+        println!(
+            "[OBVH, from_bvh_node] inners={}, leaves={}, sizeof(Node)={}",
+            inners.len(),
+            leaves.len(),
+            std::mem::size_of::<Node>()
+        );
         Self {
             bbox: bvh_node.aabb,
             leaves: leaves,
@@ -633,7 +639,11 @@ mod tests {
         let obj = &mut ObjFile::from_file(Path::new("res/test.obj"))
             .unwrap()
             .groups[0];
-        let bvh_node = Arc::new(BvhNode::new(obj.to_triangles(material.clone()), 0.0, 1.0));
+        let bvh_node = Arc::new(BvhNode::new(
+            obj.to_triangles_ref(material.clone()),
+            0.0,
+            1.0,
+        ));
         let obvh = Arc::new(OBVH::from_bvh_node(bvh_node));
         assert_eq!(obvh.inners.len(), 1);
         assert_eq!(obvh.leaves.len(), 8);

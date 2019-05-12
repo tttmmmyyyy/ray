@@ -299,7 +299,8 @@ impl ObjGroup {
             )))
         }
     }
-    pub fn to_triangles(&self, material: Arc<Material>) -> Vec<Arc<Hitable>> {
+    pub fn to_triangles_ref(&self, material: Arc<Material>) -> Vec<Arc<Hitable>> {
+        // ToDo: コピペ
         let mut tris: Vec<Arc<Hitable>> = Vec::new();
         for face in &self.faces {
             if face.0.len() != 3 {
@@ -324,6 +325,34 @@ impl ObjGroup {
                 material.clone(),
                 // Glass::boxed(2.0, 0.0),
             )));
+        }
+        tris
+    }
+    pub fn to_triangles(&self, material: Arc<Material>) -> Vec<Triangle> {
+        let mut tris: Vec<Triangle> = Vec::new();
+        for face in &self.faces {
+            if face.0.len() != 3 {
+                // ToDo: decompose to triangle.
+                panic!("This group has a polygon which is not a triangle.");
+            }
+            let vertices = [
+                self.vertices[face.0[0].vertex],
+                self.vertices[face.0[1].vertex],
+                self.vertices[face.0[2].vertex],
+            ];
+            let normals = (|| -> Option<[Vec3; 3]> {
+                Some([
+                    self.normals[face.0[0].normal?],
+                    self.normals[face.0[1].normal?],
+                    self.normals[face.0[2].normal?],
+                ])
+            })();
+            tris.push(Triangle::new(
+                &vertices,
+                &normals,
+                material.clone(),
+                // Glass::boxed(2.0, 0.0),
+            ));
         }
         tris
     }

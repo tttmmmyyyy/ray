@@ -88,50 +88,56 @@ pub fn cube(size: &Vec3, material: Arc<Material>) -> impl Hitable {
     HitableList::new(recs)
 }
 
-pub fn cube_rectangles(pos: &Vec3, size: &Vec3, material: Arc<Material>) -> Vec<Arc<Hitable>> {
-    // ToDo: Vec<Arc<Hitable>>ではなくVec<Rectangle>を返すようにする
-    let mut recs = Vec::<Arc<Hitable>>::default();
-    recs.push(Arc::new(Rectangle::new(
+pub fn cube_rectangles(pos: &Vec3, size: &Vec3, material: Arc<Material>) -> Vec<Rectangle> {
+    let mut recs = Vec::<Rectangle>::default();
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
         &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
         &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
-    recs.push(Arc::new(Rectangle::new(
+    ));
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
         &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
         &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
-    recs.push(Arc::new(Rectangle::new(
+    ));
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
         &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
         &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
-    recs.push(Arc::new(Rectangle::new(
+    ));
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
         &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
         &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
-    recs.push(Arc::new(Rectangle::new(
+    ));
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
         &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
         &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
-    recs.push(Arc::new(Rectangle::new(
+    ));
+    recs.push(Rectangle::new(
         &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
         &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
         &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
         material.clone(),
         0.000,
-    )));
+    ));
     recs
+}
+
+pub fn cube_rectangles_ref(pos: &Vec3, size: &Vec3, material: Arc<Material>) -> Vec<Arc<Hitable>> {
+    cube_rectangles(pos, size, material)
+        .into_iter()
+        .map(|rec| -> Arc<Hitable> { Arc::new(rec) })
+        .collect()
 }
