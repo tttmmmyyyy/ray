@@ -1,4 +1,4 @@
-mod bvh;
+pub mod bvh;
 pub mod bvh_node;
 pub mod empty;
 pub mod hitable_list;

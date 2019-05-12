@@ -1,8 +1,10 @@
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
+use ray::hitable::bvh::BVH;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::hitable_list::HitableList;
+use ray::hitable::hitable_ref::HitableRef;
 use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
@@ -55,7 +57,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
     ));
     objs.push(light.clone()); // light
-    let _lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
+    let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         232.0 / 255.0,
         200.0 / 255.0,
         0.5,
@@ -66,7 +68,16 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         .groups[0];
     teapot.unify_vertex();
     teapot.set_smooth_normals();
-    let teapot = Arc::new(BvhNode::new(teapot.to_triangles(glass.clone()), 0.0, 1.0));
+    // let teapot = Arc::new(BvhNode::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
+    let teapot = Arc::new(BVH::new(
+        teapot
+            .to_triangles(lambert.clone())
+            .iter()
+            .map(|arc| HitableRef(arc.clone()))
+            .collect(),
+        0.0,
+        1.0,
+    ));
     // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
     //     .unwrap()
     //     .groups[0];
@@ -84,7 +95,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     //     0.0,
     //     1.0,
     // ));
-    let teapot = Arc::new(OBVH::from_bvh_node(teapot));
+    // let teapot = Arc::new(OBVH::from_bvh_node(teapot));
     objs.push(teapot);
     // objs.push(bunny);
     let objs = Arc::new(HitableList::new(objs));

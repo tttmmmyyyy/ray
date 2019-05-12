@@ -226,9 +226,6 @@ impl Hitable for BvhNode {
             second.hit(ray, t_min, t_max)
         }
     }
-    fn is_hit<'s, 'r>(&'s self, _ray: &'r Ray, _t_min: f32, _t_max: f32) -> bool {
-        unimplemented!();
-    }
     fn bounding_box(&self, _t0: f32, _t1: f32) -> Option<Aabb> {
         Some(self.aabb)
     }

@@ -104,13 +104,13 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 800;
-    const IMAGE_HEIGHT: i32 = 800;
+    const IMAGE_WIDTH: i32 = 200;
+    const IMAGE_HEIGHT: i32 = 200;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
-    const RAYS_PER_PIXEL: i32 = 10000;
+    const RAYS_PER_PIXEL: i32 = 1000;
     const THREAD_CNT: i32 = 4;
     const REPORT_INTERVAL: i32 = 200;
-    const FILE_PATH_PREFIX: &'static str = "menger_201905121520/image_";
+    const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(
             "Wrong FILE_NAME (directory not exist): {}",
@@ -132,8 +132,8 @@ fn main() {
     }
     // let scene = scenes::get(ScenesType::CornellBox, aspect);
     // let scene = scenes::get(ScenesType::ManySpheres, aspect);
-    // let scene = scenes::get(ScenesType::Teapot, aspect);
-    let scene = scenes::get(ScenesType::Menger, aspect);
+    let scene = scenes::get(ScenesType::Teapot, aspect);
+    // let scene = scenes::get(ScenesType::Menger, aspect);
     let scene_time = duration_to_secs(&start_time.elapsed());
     println!("Scene constructed. ({:.3} secs elapsed)", scene_time);
     let rays_per_thread = RAYS_PER_PIXEL / THREAD_CNT;
