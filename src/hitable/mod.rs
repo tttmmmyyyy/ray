@@ -17,6 +17,7 @@ use crate::hitable::hitable_list::HitableList;
 use crate::hitable::rectangle::Rectangle;
 use crate::material::Material;
 use crate::ray::Ray;
+use std::ops::Shl;
 use std::sync::Arc;
 
 pub trait Hitable: Send + Sync {
@@ -88,55 +89,74 @@ pub fn cube(size: &Vec3, material: Arc<Material>) -> impl Hitable {
     HitableList::new(recs)
 }
 
-pub fn cube_rectangles(pos: &Vec3, size: &Vec3, material: Arc<Material>) -> Vec<Rectangle> {
+/// cubeを構成する矩形リストを返す
+/// * mask - 不要な面のマスク。下6bitのみ有効。0bit=({x=0}の面)、1bit=({x=1}の面)、2bit=({y=0}の面)、など。
+pub fn cube_rectangles(
+    pos: &Vec3,
+    size: &Vec3,
+    material: Arc<Material>,
+    mask: u8,
+) -> Vec<Rectangle> {
     let mut recs = Vec::<Rectangle>::default();
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
-        &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
-        &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
-        &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
-        &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
-        &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
-        &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
-        &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
-        &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
-        &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
-        &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
-    recs.push(Rectangle::new(
-        &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
-        &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
-        &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
-        material.clone(),
-        0.000,
-    ));
+    if mask & 1u8.shl(0) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
+            &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
+            &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
+    if mask & 1u8.shl(1) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
+            &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
+            &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
+    if mask & 1u8.shl(2) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
+            &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
+            &Vec3::new(0.0, 0.0, 1.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
+    if mask & 1u8.shl(3) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
+            &Vec3::new(0.0, 0.0, -1.0).component_mul(size),
+            &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
+    if mask & 1u8.shl(4) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(0.0, 0.0, 0.0).component_mul(size)),
+            &Vec3::new(0.0, 1.0, 0.0).component_mul(size),
+            &Vec3::new(1.0, 0.0, 0.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
+    if mask & 1u8.shl(5) == 0u8 {
+        recs.push(Rectangle::new(
+            &(pos + &Vec3::new(1.0, 1.0, 1.0).component_mul(size)),
+            &Vec3::new(-1.0, 0.0, 0.0).component_mul(size),
+            &Vec3::new(0.0, -1.0, 0.0).component_mul(size),
+            material.clone(),
+            0.000,
+        ));
+    }
     recs
 }
 
 pub fn cube_rectangles_ref(pos: &Vec3, size: &Vec3, material: Arc<Material>) -> Vec<Arc<Hitable>> {
-    cube_rectangles(pos, size, material)
+    cube_rectangles(pos, size, material, 0)
         .into_iter()
         .map(|rec| -> Arc<Hitable> { Arc::new(rec) })
         .collect()

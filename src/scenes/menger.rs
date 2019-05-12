@@ -19,6 +19,7 @@ use ray::material::Material;
 use ray::scene::Scene;
 use ray::texture::checker::CheckerTexture;
 use ray::texture::constant::ConstantTexture;
+use std::ops::Shl;
 use std::sync::Arc;
 
 pub fn scene(aspect_ratio: f32) -> Scene {
@@ -64,8 +65,9 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let cube_recs = menger_rectangles(
         &Vec3::new(-2.0, 0.0, -2.0),
         &Vec3::new(4.0, 4.0, 4.0),
-        4,
+        1,
         lambert.clone(),
+        0,
     );
     let cube = Arc::new(BVH::new(cube_recs, 0.0, 1.0));
     // let cube = Arc::new(OBVH::from_bvh_node(cube));
@@ -82,6 +84,8 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let objs = Arc::new(HitableList::new(objs));
     let look_from = Vec3::new(0.0, 7.5, 10.0);
     let look_at = Vec3::new(0.0, 2.0, 0.0);
+    // let look_from = Vec3::new(0.0, 2.0, 0.0);
+    // let look_at = Vec3::new(1.0, 2.0, 0.0);
     let dist_to_focus = 5.0;
     let vfov = 40.0;
     let camera = Camera::new_time(
@@ -104,14 +108,17 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     }
 }
 
+/// cubeを構成する矩形リストを返す
+/// * mask - 不要な面のマスク。cubes_rectangles関数の同名の引数と同じ意味。
 fn menger_rectangles(
     pos: &Vec3,
     size: &Vec3,
     depth: usize,
     texture: Arc<Material>,
+    mask: u8,
 ) -> Vec<Rectangle> {
     if depth == 0 {
-        return ray::hitable::cube_rectangles(pos, size, texture.clone());
+        return ray::hitable::cube_rectangles(pos, size, texture.clone(), mask);
     }
     iproduct!(0..3, 0..3, 0..3)
         .filter(|(x, y, z): &(i32, i32, i32)| {
@@ -121,7 +128,30 @@ fn menger_rectangles(
             let inner_size = size / 3.0;
             let inner_pos =
                 pos + inner_size.component_mul(&Vec3::new(x as f32, y as f32, z as f32));
-            menger_rectangles(&inner_pos, &inner_size, depth - 1, texture.clone())
+            let mut next_mask: u8 = 0;
+            for i in 0..3 {
+                let a = [x, y, z][i];
+                let b = [x, y, z][(i + 1) % 3];
+                let c = [x, y, z][(i + 2) % 3];
+                if a % 2 == 0 {
+                    next_mask = next_mask | (mask & 0b01u8.shl(2 * i + a as usize / 2));
+                }
+                if b % 2 == 0 && c % 2 == 0 {
+                    match a {
+                        0 => next_mask = next_mask | 0b10u8.shl(2 * i),
+                        1 => next_mask = next_mask | 0b11u8.shl(2 * i),
+                        2 => next_mask = next_mask | 0b01u8.shl(2 * i),
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            menger_rectangles(
+                &inner_pos,
+                &inner_size,
+                depth - 1,
+                texture.clone(),
+                next_mask,
+            )
         })
         .flatten()
         .collect()
