@@ -65,7 +65,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let cube_recs = menger_rectangles(
         &Vec3::new(-2.0, 0.0, -2.0),
         &Vec3::new(4.0, 4.0, 4.0),
-        5,
+        2,
         lambert.clone(),
         0,
     );

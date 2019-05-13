@@ -132,8 +132,8 @@ fn main() {
     }
     // let scene = scenes::get(ScenesType::CornellBox, aspect);
     // let scene = scenes::get(ScenesType::ManySpheres, aspect);
-    // let scene = scenes::get(ScenesType::Teapot, aspect);
-    let scene = scenes::get(ScenesType::Menger, aspect);
+    let scene = scenes::get(ScenesType::Teapot, aspect);
+    // let scene = scenes::get(ScenesType::Menger, aspect);
     let scene_time = duration_to_secs(&start_time.elapsed());
     println!("Scene constructed. ({:.3} secs elapsed)", scene_time);
     let rays_per_thread = RAYS_PER_PIXEL / THREAD_CNT;

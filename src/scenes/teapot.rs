@@ -68,12 +68,12 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         .groups[0];
     teapot.unify_vertex();
     teapot.set_smooth_normals();
-    let teapot = Arc::new(BvhNode::new(
-        teapot.to_triangles_ref(lambert.clone()),
-        0.0,
-        1.0,
-    ));
-    // let teapot = Arc::new(BVH::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
+    // let teapot = Arc::new(BvhNode::new(
+    //     teapot.to_triangles_ref(lambert.clone()),
+    //     0.0,
+    //     1.0,
+    // ));
+    let teapot = Arc::new(BVH::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
     // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
     //     .unwrap()
     //     .groups[0];

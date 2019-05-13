@@ -102,8 +102,8 @@ where
             if idx == 0 {
                 // if (left, right) = (empty, whole) achieves min cost,
                 debug_assert!(leaves.len() >= 2);
-                idx = 1; // idx == 0のままだと無限ループになるので避ける
-                         // ToDo: これで性能低下が起きていないかテストできていない。
+                idx = leaves.len() / 2;
+                // idx = 1でもよい。teapotでのテストもmengerでのテストも同じ時間かかっていた。
                 axis = 0;
             }
             Self::sort_by_center(&mut leaves, axis);
