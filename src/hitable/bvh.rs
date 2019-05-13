@@ -101,8 +101,9 @@ where
             let (mut axis, mut idx) = BvhNode::search_splitting_axis_index(&mut bboxes);
             if idx == 0 {
                 // if (left, right) = (empty, whole) achieves min cost,
-                // debug_assert!(leaves.len() >= 2);
-                idx = leaves.len() / 2;
+                debug_assert!(leaves.len() >= 2);
+                idx = 1; // idx == 0のままだと無限ループになるので避ける
+                         // ToDo: これで性能低下が起きていないかテストできていない。
                 axis = 0;
             }
             Self::sort_by_center(&mut leaves, axis);
