@@ -555,7 +555,7 @@ impl BVHNodePtrWithBBox {
 impl Default for BVHNodePtrWithBBox {
     fn default() -> Self {
         BVHNodePtrWithBBox {
-            ptr: BVHNodePointer(NodePointer::root()),
+            ptr: BVHNodePointer(NodePointer::empty_leaf()),
             bbox: Aabb::empty(),
         }
     }

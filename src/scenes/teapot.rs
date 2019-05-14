@@ -3,6 +3,7 @@ use ray::background::AmbientLight;
 use ray::camera::Camera;
 use ray::hitable::bvh::BVH;
 use ray::hitable::hitable_list::HitableList;
+use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
 use ray::hitable::Hitable;
@@ -70,7 +71,8 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     //     0.0,
     //     1.0,
     // ));
-    let teapot = Arc::new(BVH::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0));
+    let teapot = BVH::new(teapot.to_triangles(lambert.clone()), 0.0, 1.0);
+    let teapot = Arc::new(OBVH::from_bvh(teapot));
     // let bunny = &mut ObjFile::from_file(Path::new("res/bunny.obj"))
     //     .unwrap()
     //     .groups[0];
