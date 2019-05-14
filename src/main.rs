@@ -110,7 +110,7 @@ fn main() {
     const RAYS_PER_PIXEL: i32 = 10000;
     const THREAD_CNT: i32 = 4;
     const REPORT_INTERVAL: i32 = 200;
-    const FILE_PATH_PREFIX: &'static str = "jerusalem_201905142107/image_";
+    const FILE_PATH_PREFIX: &'static str = "jerusalem_201905142153/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(
             "Wrong FILE_NAME (directory not exist): {}",

@@ -118,11 +118,11 @@ pub fn scene(aspect_ratio: f32) -> Scene {
 fn menger_rectangles(
     pos: &Vec3,
     size: &Vec3,
-    depth: usize,
+    depth: i32,
     texture: Arc<Material>,
     mask: u8,
 ) -> Vec<Rectangle> {
-    if depth == 0 {
+    if depth <= 0 {
         return ray::hitable::cube_rectangles(pos, size, texture.clone(), mask);
     }
     iproduct!(0..3, 0..3, 0..3)
@@ -169,13 +169,23 @@ fn menger_rectangles(
                     next_mask = next_mask | 0b11u8.shl(2 * i)
                 }
             }
-            menger_rectangles(
-                &inner_pos,
-                &inner_size,
-                depth - 1,
-                texture.clone(),
-                next_mask,
-            )
+            if x == 1 || y == 1 || z == 1 {
+                menger_rectangles(
+                    &inner_pos,
+                    &inner_size,
+                    depth - 2,
+                    texture.clone(),
+                    next_mask,
+                )
+            } else {
+                menger_rectangles(
+                    &inner_pos,
+                    &inner_size,
+                    depth - 1,
+                    texture.clone(),
+                    next_mask,
+                )
+            }
         })
         .flatten()
         .collect()
