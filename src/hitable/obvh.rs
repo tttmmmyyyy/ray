@@ -2,6 +2,7 @@ use crate::aabb::Aabb;
 use crate::aliases::RandGen;
 use crate::aliases::Vec3;
 use crate::hit_record::HitRecord;
+use crate::hitable::bvh::BVHNodePointer;
 use crate::hitable::bvh::BVH;
 use crate::hitable::node_pointer::NodePointer;
 use crate::hitable::Hitable;
@@ -13,6 +14,10 @@ use std::arch::x86_64::*;
 use std::fmt;
 use std::ops::Shl;
 use std::ops::Shr;
+
+/// NodePointerのwrapper（newtypeパターン）
+#[derive(Clone, Copy)]
+struct OBVHNodePointer(pub NodePointer);
 
 #[repr(align(32))]
 struct BBoxesArray([[[f32; 8]; 3]; 2]);
@@ -79,7 +84,7 @@ struct Node {
     // bboxes[min_or_max][axis][child_id]は、子chiild_idのバウンディングボックスの、軸axisに沿った座標値の
     // 最小値（min_or_max=0のとき）か最大値（min_or_max=1のとき）。
     bboxes: [[__m256; 3]; 2],
-    children: [NodePointer; 8],
+    children: [OBVHNodePointer; 8],
     // 各分岐点における分割軸情報。
     // axis_bit_i（i=0,1）をサイズ8のu8配列とみなすとする（リトルエンディアン）。
     // それぞれのaxis_bit_i[child_id]の値は下位3bitのみが意味を持ち、x{i}でxの第iビットを表すとき、
@@ -152,14 +157,14 @@ right:
             bbox_101 = aabbs[0b101usize],
             bbox_110 = aabbs[0b110usize],
             bbox_111 = aabbs[0b111usize],
-            ptr_000 = self.children[0b000usize],
-            ptr_001 = self.children[0b001usize],
-            ptr_010 = self.children[0b010usize],
-            ptr_011 = self.children[0b011usize],
-            ptr_100 = self.children[0b100usize],
-            ptr_101 = self.children[0b101usize],
-            ptr_110 = self.children[0b110usize],
-            ptr_111 = self.children[0b111usize],
+            ptr_000 = self.children[0b000usize].0,
+            ptr_001 = self.children[0b001usize].0,
+            ptr_010 = self.children[0b010usize].0,
+            ptr_011 = self.children[0b011usize].0,
+            ptr_100 = self.children[0b100usize].0,
+            ptr_101 = self.children[0b101usize].0,
+            ptr_110 = self.children[0b110usize].0,
+            ptr_111 = self.children[0b111usize].0,
         )
     }
 }
@@ -167,7 +172,7 @@ right:
 const NODE_STACK_UPPER_BOUND: usize = 64;
 
 struct NodeStack {
-    data: [NodePointer; NODE_STACK_UPPER_BOUND],
+    data: [OBVHNodePointer; NODE_STACK_UPPER_BOUND],
     end: usize,
 }
 
@@ -175,18 +180,18 @@ impl NodeStack {
     fn is_empty(&self) -> bool {
         self.end == 0
     }
-    fn push(&mut self, elem: NodePointer) {
+    fn push(&mut self, elem: OBVHNodePointer) {
         self.data[self.end] = elem;
         self.end += 1;
     }
-    fn pop(&mut self) -> NodePointer {
+    fn pop(&mut self) -> OBVHNodePointer {
         debug_assert!(!self.is_empty());
         self.end -= 1;
         self.data[self.end]
     }
     fn empty() -> Self {
         NodeStack {
-            data: [NodePointer::empty_leaf(); NODE_STACK_UPPER_BOUND],
+            data: [OBVHNodePointer(NodePointer::empty_leaf()); NODE_STACK_UPPER_BOUND],
             end: 0,
         }
     }
@@ -219,17 +224,17 @@ where
         }
         let ray_avx = RayAVXInfo::from_ray(ray);
         let mut node_stack = NodeStack::empty();
-        node_stack.push(NodePointer::root());
+        node_stack.push(OBVHNodePointer(NodePointer::root()));
         let mut hit_record: Option<HitRecord<'s>> = None;
         while !node_stack.is_empty() {
             let node_ptr = node_stack.pop();
-            if node_ptr.is_leaf() {
-                if node_ptr.is_empty_leaf() {
+            if node_ptr.0.is_leaf() {
+                if node_ptr.0.is_empty_leaf() {
                     continue;
                 }
                 HitRecord::replace_to_some_min(
                     &mut hit_record,
-                    &self.leaves[node_ptr.index()].hit(ray, t_min, t_max),
+                    &self.leaves[node_ptr.0.index()].hit(ray, t_min, t_max),
                 );
                 hit_record.map(|ref hr| {
                     debug_assert!(t_min <= hr.t && hr.t <= t_max);
@@ -237,7 +242,7 @@ where
                 });
             } else {
                 // if an inner node,
-                let node = &self.inners[node_ptr.index()];
+                let node = &self.inners[node_ptr.0.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
                 debug_assert!(hit_bits < 256);
                 let priorities = node.calc_traverse_priority(&ray_avx.dir_sign);
@@ -259,19 +264,19 @@ where
     fn is_hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, t_max: f32) -> bool {
         let ray_avx = RayAVXInfo::from_ray(ray);
         let mut node_stack = NodeStack::empty();
-        node_stack.push(NodePointer::root());
+        node_stack.push(OBVHNodePointer(NodePointer::root()));
         while !node_stack.is_empty() {
             let node_ptr = node_stack.pop();
-            if node_ptr.is_leaf() {
-                if node_ptr.is_empty_leaf() {
+            if node_ptr.0.is_leaf() {
+                if node_ptr.0.is_empty_leaf() {
                     continue;
                 }
-                if self.leaves[node_ptr.index()].is_hit(ray, t_min, t_max) {
+                if self.leaves[node_ptr.0.index()].is_hit(ray, t_min, t_max) {
                     return true;
                 }
             } else {
                 // if an inner node,
-                let node = &self.inners[node_ptr.index()];
+                let node = &self.inners[node_ptr.0.index()];
                 let hit_bits = node.hit(&ray_avx, t_min, t_max);
                 debug_assert!(hit_bits <= 255);
                 for bit in 0..8 {
@@ -368,7 +373,7 @@ impl Node {
                     [_mm256_set1_ps(std::f32::INFINITY); 3],
                     [_mm256_set1_ps(std::f32::NEG_INFINITY); 3],
                 ],
-                children: [NodePointer::empty_leaf(); 8],
+                children: [OBVHNodePointer(NodePointer::empty_leaf()); 8],
                 // axis_top: 0,
                 // axis_child: [0; 2],
                 // axis_gson: [0; 4],
@@ -379,10 +384,9 @@ impl Node {
     }
     pub fn from_bvh_node<L>(
         bvh: &BVH<L>,
-        node_ptr: NodePointer,
-        bbox: Aabb,
-    ) -> (Self, [(NodePointer, Aabb); 8]) {
-        let mut children: [(NodePointer, Aabb); 8] = [(NodePointer::root(), Aabb::empty()); 8];
+        bvh_node: BVHNodePtrWithBBox,
+    ) -> (Self, [BVHNodePtrWithBBox; 8]) {
+        let mut children: [BVHNodePtrWithBBox; 8] = [BVHNodePtrWithBBox::default(); 8];
         let mut bboxes = BBoxesArray::empty();
         let mut this = Node::empty();
         let mut axis_top: usize = 0;
@@ -390,8 +394,7 @@ impl Node {
         let mut axis_gson = [0usize; 4];
         this.from_bvh_node_traverse(
             bvh,
-            node_ptr,
-            bbox,
+            bvh_node,
             &mut bboxes,
             &mut children,
             0,
@@ -407,10 +410,9 @@ impl Node {
     fn from_bvh_node_traverse<L>(
         &mut self,
         bvh: &BVH<L>,
-        current: NodePointer,
-        bbox: Aabb,
+        bvh_node: BVHNodePtrWithBBox,
         bboxes: &mut BBoxesArray,
-        children: &mut [(NodePointer, Aabb); 8],
+        children: &mut [BVHNodePtrWithBBox; 8],
         depth: usize,
         child_id: u8,
         axis_top: &mut usize, // ToDo: u8にする
@@ -419,14 +421,14 @@ impl Node {
     ) {
         debug_assert!(depth <= 3);
         if depth == 3 {
-            Self::set_bboxes_array_layout(bboxes, child_id, &bbox);
-            children[child_id as usize] = (current, bbox);
+            Self::set_bboxes_array_layout(bboxes, child_id, &bvh_node.bbox);
+            children[child_id as usize] = bvh_node;
         } else {
-            if current.is_leaf() {
-                Self::set_bboxes_array_layout(bboxes, child_id, &bbox);
-                children[child_id as usize] = (current, bbox);
+            if bvh_node.ptr.0.is_leaf() {
+                Self::set_bboxes_array_layout(bboxes, child_id, &bvh_node.bbox);
+                children[child_id as usize] = bvh_node;
             } else {
-                let bvh_node = &bvh.inners[current.index()];
+                let bvh_node = &bvh.inners[bvh_node.ptr.0.index()];
                 let axis: usize = bvh_node.axis as usize;
                 if depth == 0 {
                     debug_assert!(child_id < 1);
@@ -440,8 +442,7 @@ impl Node {
                 }
                 self.from_bvh_node_traverse(
                     bvh,
-                    bvh_node.children[0],
-                    bvh_node.bboxes[0],
+                    BVHNodePtrWithBBox::new(bvh_node.children[0], bvh_node.bboxes[0]),
                     bboxes,
                     children,
                     depth + 1,
@@ -452,8 +453,7 @@ impl Node {
                 );
                 self.from_bvh_node_traverse(
                     bvh,
-                    bvh_node.children[1],
-                    bvh_node.bboxes[1],
+                    BVHNodePtrWithBBox::new(bvh_node.children[1], bvh_node.bboxes[1]),
                     bboxes,
                     children,
                     depth + 1,
@@ -540,13 +540,38 @@ impl Node {
     }
 }
 
+#[derive(Clone, Copy)]
+struct BVHNodePtrWithBBox {
+    ptr: BVHNodePointer,
+    bbox: Aabb,
+}
+
+impl BVHNodePtrWithBBox {
+    fn new(ptr: BVHNodePointer, bbox: Aabb) -> Self {
+        Self { ptr, bbox }
+    }
+}
+
+impl Default for BVHNodePtrWithBBox {
+    fn default() -> Self {
+        BVHNodePtrWithBBox {
+            ptr: BVHNodePointer(NodePointer::root()),
+            bbox: Aabb::empty(),
+        }
+    }
+}
+
 impl<L> OBVH<L>
 where
     L: Hitable,
 {
     pub fn from_bvh(bvh: BVH<L>) -> Self {
         let mut inners: Vec<Node> = Vec::default();
-        Self::add_inner(&bvh, NodePointer::root(), bvh.bbox, &mut inners);
+        Self::add_inner(
+            &bvh,
+            BVHNodePtrWithBBox::new(BVHNodePointer(NodePointer::root()), bvh.bbox),
+            &mut inners,
+        );
         Self {
             bbox: bvh.bbox, // ToDo: 数字は適当。
             inners: inners,
@@ -556,17 +581,17 @@ where
     // ToDo: NodePointerがBVHとOBVHの両方にあってわかりづらいのでnewtypeパターンする
     /// BVHを平坦化して、OBVHノードを構築する。
     /// * return - 追加したOBVHノードのうちもっとも根に近いもののインデックス
-    fn add_inner(bvh: &BVH<L>, node_ptr: NodePointer, bbox: Aabb, inners: &mut Vec<Node>) -> usize {
-        let (node, children) = Node::from_bvh_node(bvh, node_ptr, bbox);
+    fn add_inner(bvh: &BVH<L>, bvh_node: BVHNodePtrWithBBox, inners: &mut Vec<Node>) -> usize {
+        let (node, children) = Node::from_bvh_node(bvh, bvh_node);
         let node_idx = inners.len();
         inners.push(node);
         for i in 0..8 {
-            if children[i].0.is_leaf() {
+            if children[i].ptr.0.is_leaf() {
                 let node = &mut inners[node_idx];
-                node.children[i] = children[i].0;
+                node.children[i] = OBVHNodePointer(children[i].ptr.0);
             } else {
-                let idx = Self::add_inner(bvh, children[i].0, children[i].1, inners);
-                inners[node_idx].children[i] = NodePointer::new(false, idx);
+                let idx = Self::add_inner(bvh, children[i], inners);
+                inners[node_idx].children[i] = OBVHNodePointer(NodePointer::new(false, idx));
             }
         }
         node_idx
@@ -578,6 +603,7 @@ mod tests {
     use super::BBoxesArray;
     use super::Node;
     use super::NodePointer;
+    use super::OBVHNodePointer;
     use super::BVH;
     use super::OBVH;
     use crate::material::lambertian::Lambertian;
@@ -693,7 +719,7 @@ mod tests {
             for (ray_is_pos_x, ray_is_pos_y, ray_is_pos_z) in iproduct!(0..2, 0..2, 0..2) {
                 let mut node = Node {
                     bboxes: Node::load_bboxes(&BBoxesArray::empty()),
-                    children: [NodePointer::empty_leaf(); 8],
+                    children: [OBVHNodePointer(NodePointer::empty_leaf()); 8],
                     axis_bits_0: 0,
                     axis_bits_1: 0,
                 };
