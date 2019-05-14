@@ -1,4 +1,5 @@
 mod cornellbox;
+mod jerusalem_cube;
 mod manyspheres;
 mod menger;
 mod teapot;
@@ -11,6 +12,7 @@ pub enum ScenesType {
     ManySpheres,
     Teapot,
     Menger,
+    JerusalemCube,
 }
 
 pub fn get(scene_type: ScenesType, aspect_ratio: f32) -> Scene {
@@ -19,5 +21,6 @@ pub fn get(scene_type: ScenesType, aspect_ratio: f32) -> Scene {
         ScenesType::ManySpheres => self::manyspheres::scene(aspect_ratio),
         ScenesType::Teapot => self::teapot::scene(aspect_ratio),
         ScenesType::Menger => self::menger::scene(aspect_ratio),
+        ScenesType::JerusalemCube => self::jerusalem_cube::scene(aspect_ratio),
     }
 }
