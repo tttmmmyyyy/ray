@@ -1,6 +1,8 @@
 use crate::aabb::Aabb;
 use crate::aliases::{RandGen, Vec3};
 use crate::hit_record::HitRecord;
+use crate::hitable::bvh;
+use crate::hitable::bvh::BVH;
 use crate::hitable::bvh_node::{BvhNode, BvhNodeConstructionRecord};
 use crate::hitable::node_pointer::NodePointer;
 use crate::hitable::Hitable;
@@ -56,10 +58,10 @@ impl RayAVXInfo {
 }
 
 /// Octa Bounding Volume Hierarchy
-pub struct OBVH {
+pub struct OBVH<L> {
     bbox: Aabb,
-    leaves: Vec<Arc<Hitable>>, // leaf-nodes.
-    inners: Vec<Node>,         // inner nodes. inners[0] is the root node.
+    leaves: Vec<L>,    // leaf-nodes.
+    inners: Vec<Node>, // inner nodes. inners[0] is the root node.
 }
 
 struct Node {
@@ -137,7 +139,7 @@ right:
     right:
       bbox: {bbox_111:?}
       ptr: {ptr_111}",
-            axis_top = 0,     //self.axis_top,
+            axis_top = 0,     //self.axis_top, // ToDo: この辺りきちんと実装しておく
             axis_child_0 = 0, //self.axis_child[0],
             axis_child_1 = 0, //self.axis_child[1],
             axis_gson_00 = 0, //self.axis_gson[0b00usize],
@@ -209,7 +211,10 @@ impl fmt::Display for NodePointer {
     }
 }
 
-impl Hitable for OBVH {
+impl<L> Hitable for OBVH<L>
+where
+    L: Hitable,
+{
     fn hit<'s, 'r>(&'s self, ray: &'r Ray, t_min: f32, mut t_max: f32) -> Option<HitRecord<'s>> {
         if !self.bbox.hit(ray, t_min, t_max) {
             return None;
@@ -374,20 +379,23 @@ impl Node {
             }
         }
     }
-    pub fn from_bvh_node(
-        bvh_node: &BvhNodeConstructionRecord,
-    ) -> (Self, [BvhNodeConstructionRecord; 8]) {
-        let mut children: [BvhNodeConstructionRecord; 8] = Default::default();
+    pub fn from_bvh_node<L>(
+        bvh: &BVH<L>,
+        node_ptr: NodePointer,
+        bbox: Aabb,
+    ) -> (Self, [(NodePointer, Aabb); 8]) {
+        let mut children: [(NodePointer, Aabb); 8] = [(NodePointer::root(), Aabb::empty()); 8];
         let mut bboxes = BBoxesArray::empty();
         let mut this = Node::empty();
         let mut axis_top: usize = 0;
         let mut axis_child = [0usize; 2];
         let mut axis_gson = [0usize; 4];
-        Self::from_bvh_node_traverse(
-            &mut this,
+        this.from_bvh_node_traverse(
+            bvh,
+            node_ptr,
+            bbox,
             &mut bboxes,
             &mut children,
-            bvh_node,
             0,
             0,
             &mut axis_top,
@@ -398,61 +406,64 @@ impl Node {
         this.bboxes = Self::load_bboxes(&bboxes);
         (this, children)
     }
-    fn from_bvh_node_traverse(
+    fn from_bvh_node_traverse<L>(
         &mut self,
+        bvh: &BVH<L>,
+        current: NodePointer,
+        bbox: Aabb,
         bboxes: &mut BBoxesArray,
-        children: &mut [BvhNodeConstructionRecord; 8],
-        current: &BvhNodeConstructionRecord,
+        children: &mut [(NodePointer, Aabb); 8],
         depth: usize,
         child_id: u8,
-        axis_top: &mut usize,
+        axis_top: &mut usize, // ToDo: u8にする
         axis_child: &mut [usize; 2],
         axis_gson: &mut [usize; 4],
     ) {
         debug_assert!(depth <= 3);
         if depth == 3 {
-            Self::set_bboxes_array_layout(bboxes, child_id, &current.bbox());
-            children[child_id as usize] = current.clone();
+            Self::set_bboxes_array_layout(bboxes, child_id, &bbox);
+            children[child_id as usize] = (current, bbox);
         } else {
-            match current {
-                BvhNodeConstructionRecord::Leaf { ptr: _, bbox: _ } => {
-                    Self::set_bboxes_array_layout(bboxes, child_id, &current.bbox());
-                    children[child_id as usize] = current.clone();
+            if current.is_leaf() {
+                Self::set_bboxes_array_layout(bboxes, child_id, &bbox);
+                children[child_id as usize] = (current, bbox);
+            } else {
+                let bvh_node = &bvh.inners[current.index()];
+                let axis: usize = bvh_node.axis as usize;
+                if depth == 0 {
+                    debug_assert!(child_id < 1);
+                    *axis_top = axis;
+                } else if depth == 1 {
+                    debug_assert!(child_id < 2);
+                    (*axis_child)[child_id as usize] = axis;
+                } else if depth == 2 {
+                    debug_assert!(child_id < 4);
+                    (*axis_gson)[child_id as usize] = axis;
                 }
-                BvhNodeConstructionRecord::Inner { ptr, bbox: _ } => {
-                    if depth == 0 {
-                        debug_assert!(child_id < 1);
-                        *axis_top = ptr.axis;
-                    } else if depth == 1 {
-                        debug_assert!(child_id < 2);
-                        (*axis_child)[child_id as usize] = ptr.axis;
-                    } else if depth == 2 {
-                        debug_assert!(child_id < 4);
-                        (*axis_gson)[child_id as usize] = ptr.axis;
-                    }
-                    Self::from_bvh_node_traverse(
-                        self,
-                        bboxes,
-                        children,
-                        &ptr.left_node_record,
-                        depth + 1,
-                        child_id | 1u8.shl(depth),
-                        axis_top,
-                        axis_child,
-                        axis_gson,
-                    );
-                    Self::from_bvh_node_traverse(
-                        self,
-                        bboxes,
-                        children,
-                        &ptr.right_node_record,
-                        depth + 1,
-                        child_id,
-                        axis_top,
-                        axis_child,
-                        axis_gson,
-                    );
-                }
+                self.from_bvh_node_traverse(
+                    bvh,
+                    bvh_node.children[0],
+                    bvh_node.bboxes[0],
+                    bboxes,
+                    children,
+                    depth + 1,
+                    child_id | 1u8.shl(depth),
+                    axis_top,
+                    axis_child,
+                    axis_gson,
+                );
+                self.from_bvh_node_traverse(
+                    bvh,
+                    bvh_node.children[1],
+                    bvh_node.bboxes[1],
+                    bboxes,
+                    children,
+                    depth + 1,
+                    child_id,
+                    axis_top,
+                    axis_child,
+                    axis_gson,
+                );
             }
         }
     }
@@ -531,69 +542,36 @@ impl Node {
     }
 }
 
-impl OBVH {
-    pub fn from_bvh_node(bvh_node: Arc<BvhNode>) -> Self {
-        let mut leaves: Vec<Arc<Hitable>> = vec![];
-        let mut inners: Vec<Node> = vec![];
-        Self::add_inner(
-            &BvhNodeConstructionRecord::Inner {
-                bbox: bvh_node.aabb,
-                ptr: bvh_node.clone(),
-            },
-            &mut inners,
-            &mut leaves,
-        );
-        println!(
-            "[OBVH, from_bvh_node] inners={}, leaves={}, sizeof(Node)={}",
-            inners.len(),
-            leaves.len(),
-            std::mem::size_of::<Node>()
-        );
+impl<L> OBVH<L>
+where
+    L: Hitable,
+{
+    pub fn from_bvh(bvh: BVH<L>) -> Self {
+        let mut inners: Vec<Node> = Vec::default();
+        Self::add_inner(&bvh, NodePointer::root(), bvh.bbox, &mut inners);
         Self {
-            bbox: bvh_node.aabb,
-            leaves: leaves,
+            bbox: bvh.bbox, // ToDo: 数字は適当。
             inners: inners,
+            leaves: bvh.leaves,
         }
     }
-    fn add_inner(
-        bvh_node: &BvhNodeConstructionRecord,
-        inners: &mut Vec<Node>,
-        leaves: &mut Vec<Arc<Hitable>>,
-    ) -> usize {
-        let (node, children) = Node::from_bvh_node(bvh_node);
+    // ToDo: NodePointerがBVHとOBVHの両方にあってわかりづらいのでnewtypeパターンする
+    /// BVHを平坦化して、OBVHノードを構築する。
+    /// * return - 追加したOBVHノードのうちもっとも根に近いもののインデックス
+    fn add_inner(bvh: &BVH<L>, node_ptr: NodePointer, bbox: Aabb, inners: &mut Vec<Node>) -> usize {
+        let (node, children) = Node::from_bvh_node(bvh, node_ptr, bbox);
         let node_idx = inners.len();
         inners.push(node);
         for i in 0..8 {
-            match &children[i] {
-                BvhNodeConstructionRecord::Leaf { ptr, bbox } => {
-                    let node = &mut inners[node_idx];
-                    if bbox.is_empty() {
-                        node.children[i] = NodePointer::empty_leaf();
-                        debug_assert!(node.children[i].is_empty_leaf());
-                        debug_assert!(node.children[i].is_leaf());
-                    } else {
-                        let idx = Self::add_leaf(ptr.clone(), leaves);
-                        node.children[i] = NodePointer::new(true, idx);
-                    }
-                }
-                BvhNodeConstructionRecord::Inner { ptr, bbox: _ } => {
-                    if let Some(singleton) = ptr.singleton_node() {
-                        let idx = Self::add_leaf(singleton, leaves);
-                        inners[node_idx].children[i] = NodePointer::new(true, idx);
-                    } else {
-                        debug_assert!(!ptr.is_both_node_empty());
-                        let idx = Self::add_inner(&children[i], inners, leaves);
-                        inners[node_idx].children[i] = NodePointer::new(false, idx);
-                    }
-                }
+            if children[i].0.is_leaf() {
+                let node = &mut inners[node_idx];
+                node.children[i] = children[i].0;
+            } else {
+                let idx = Self::add_inner(bvh, children[i].0, children[i].1, inners);
+                inners[node_idx].children[i] = NodePointer::new(false, idx);
             }
         }
         node_idx
-    }
-    fn add_leaf(leaf: Arc<Hitable>, leaves: &mut Vec<Arc<Hitable>>) -> usize {
-        let idx = leaves.len();
-        leaves.push(leaf);
-        idx
     }
 }
 
@@ -602,6 +580,7 @@ mod tests {
     use super::BBoxesArray;
     use super::Node;
     use super::NodePointer;
+    use super::BVH;
     use super::OBVH;
     use crate::hitable::bvh_node::BvhNode;
     use crate::material::lambertian::Lambertian;
@@ -639,12 +618,8 @@ mod tests {
         let obj = &mut ObjFile::from_file(Path::new("res/test.obj"))
             .unwrap()
             .groups[0];
-        let bvh_node = Arc::new(BvhNode::new(
-            obj.to_triangles_ref(material.clone()),
-            0.0,
-            1.0,
-        ));
-        let obvh = Arc::new(OBVH::from_bvh_node(bvh_node));
+        let bvh = BVH::new(obj.to_triangles(material.clone()), 0.0, 1.0);
+        let obvh = Arc::new(OBVH::from_bvh(bvh));
         assert_eq!(obvh.inners.len(), 1);
         assert_eq!(obvh.leaves.len(), 8);
         let node = &obvh.inners[0];
@@ -750,7 +725,7 @@ mod tests {
     }
 }
 
-impl fmt::Debug for OBVH {
+impl<L> fmt::Debug for OBVH<L> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Num of leaf nodes: {}\n", self.leaves.len()).unwrap();
         write!(f, "Num of inner nodes: {}\n", self.inners.len()).unwrap();

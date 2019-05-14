@@ -5,10 +5,11 @@ use crate::hitable::node_pointer::NodePointer;
 use crate::hitable::Hitable;
 use crate::ray::Ray;
 
-struct Node {
-    bboxes: [Aabb; 2],
-    children: [NodePointer; 2],
-    axis: u8,
+// ToDo: OBVHから参照するためにpubにしている。
+pub struct Node {
+    pub bboxes: [Aabb; 2],
+    pub children: [NodePointer; 2],
+    pub axis: u8,
 }
 
 impl Default for Node {
@@ -21,10 +22,11 @@ impl Default for Node {
     }
 }
 
+// ToDo: OBVHから参照するためにpubにしている。
 pub struct BVH<L> {
-    leaves: Vec<L>,    // leaf-nodes.
-    inners: Vec<Node>, // inner nodes. inners[0] is the root node.
-    bbox: Aabb,
+    pub leaves: Vec<L>,    // leaf-nodes.
+    pub inners: Vec<Node>, // inner nodes. inners[0] is the root node.
+    pub bbox: Aabb,
 }
 
 impl<L> BVH<L>

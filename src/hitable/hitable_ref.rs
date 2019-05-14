@@ -6,6 +6,7 @@ use crate::hitable::Hitable;
 use crate::Ray;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct HitableRef(pub Arc<Hitable>);
 
 impl Hitable for HitableRef {
@@ -23,5 +24,14 @@ impl Hitable for HitableRef {
     }
     fn direction_density(&self, origin: &Vec3, dir: &Vec3) -> f32 {
         self.0.direction_density(origin, dir)
+    }
+}
+
+impl HitableRef {
+    pub fn new<T>(hitable: T) -> Self
+    where
+        T: Hitable + 'static,
+    {
+        Self(Arc::new(hitable))
     }
 }

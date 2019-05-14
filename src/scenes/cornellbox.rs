@@ -3,8 +3,10 @@ use ray::affine::Affine;
 use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
+use ray::hitable::bvh::BVH;
 use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::cube;
+use ray::hitable::hitable_ref::HitableRef;
 use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
@@ -20,8 +22,8 @@ use ray::texture::constant::ConstantTexture;
 use std::sync::Arc;
 
 pub fn scene(aspect_ratio: f32) -> Scene {
-    let mut objs = Vec::<Arc<Hitable>>::new();
-    objs.push(Arc::new(Rectangle::new(
+    let mut objs = Vec::<HitableRef>::new();
+    objs.push(HitableRef::new(Rectangle::new(
         &Vec3::new(0.0, 0.0, 555.0),
         &Vec3::new(0.0, 555.0, 0.0),
         &Vec3::new(555.0, 0.0, 0.0),
@@ -33,7 +35,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         )))),
         0.000,
     ))); // far
-    objs.push(Arc::new(Rectangle::new(
+    objs.push(HitableRef::new(Rectangle::new(
         &Vec3::new(0.0, 0.0, 0.0),
         &Vec3::new(0.0, 555.0, 0.0),
         &Vec3::new(0.0, 0.0, 555.0),
@@ -42,7 +44,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         ))))),
         0.000,
     ))); // right
-    objs.push(Arc::new(Rectangle::new(
+    objs.push(HitableRef::new(Rectangle::new(
         &Vec3::new(555.0, 0.0, 0.0),
         &Vec3::new(0.0, 0.0, 555.0),
         &Vec3::new(0.0, 555.0, 0.0),
@@ -51,7 +53,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         ))))),
         0.000,
     ))); // left
-    objs.push(Arc::new(Rectangle::new(
+    objs.push(HitableRef::new(Rectangle::new(
         &Vec3::new(0.0, 555.0, 0.0),
         &Vec3::new(555.0, 0.0, 0.0),
         &Vec3::new(0.0, 0.0, 555.0),
@@ -60,7 +62,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         ))))),
         0.000,
     ))); // top
-    objs.push(Arc::new(Rectangle::new(
+    objs.push(HitableRef::new(Rectangle::new(
         &Vec3::new(0.0, 0.0, 0.0),
         &Vec3::new(0.0, 0.0, 555.0),
         &Vec3::new(555.0, 0.0, 0.0),
@@ -70,7 +72,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         ))))),
         0.000,
     ))); // bottom
-    let light = Arc::new(Rectangle::new(
+    let light = HitableRef::new(Rectangle::new(
         &Vec3::new(185.0, 554.0, 185.0),
         &Vec3::new(185.0, 0.0, 0.0),
         &Vec3::new(0.0, 0.0, 185.0),
@@ -83,7 +85,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     let lambert_white = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
         1.0, 1.0, 1.0,
     )))));
-    objs.push(Arc::new(Transform::new(
+    objs.push(HitableRef::new(Transform::new(
         Arc::new(Transform::new(
             Arc::new(cube(&Vec3::new(165.0, 165.0, 165.0), lambert_white.clone())),
             &Affine::translate(&Vec3::new(130.0, 0.0, 65.0)),
@@ -97,7 +99,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         0.0,
         1.0,
     ))); // tall cube
-    objs.push(Arc::new(Transform::new(
+    objs.push(HitableRef::new(Transform::new(
         Arc::new(Transform::new(
             Arc::new(cube(&Vec3::new(165.0, 330.0, 165.0), lambert_white.clone())),
             &Affine::translate(&Vec3::new(265.0, 0.0, 295.0)),
@@ -111,20 +113,20 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         0.0,
         1.0,
     ))); // short cube
-    let glass_sphere = Arc::new(Sphere::new(
+    let glass_sphere = HitableRef::new(Sphere::new(
         &Vec3::new(130.0 + 165.0 * 0.5, 165.0 + 82.5, 65.0 + 165.0 * 0.5),
         82.5,
         Arc::new(Glass::new(2.2, 0.0)),
     ));
     objs.push(glass_sphere.clone()); // glass sphere
-    let metal_sphere = Arc::new(Sphere::new(
+    let metal_sphere = HitableRef::new(Sphere::new(
         &Vec3::new(265.0 + 165.0 * 0.5, 333.0 + 82.5, 295.0 + 165.0 * 0.5),
         82.5,
         Arc::new(Metal::new(&Vec3::new(1.0, 1.0, 1.0), 0.3)),
     ));
     objs.push(metal_sphere.clone()); // metal sphere
                                      // let objs = Arc::new(HitableList::new(objs));
-    let objs = Arc::new(OBVH::from_bvh_node(Arc::new(BvhNode::new(objs, 0.0, 1.0))));
+    let objs = Arc::new(OBVH::from_bvh(BVH::new(objs, 0.0, 1.0)));
     let look_from = Vec3::new(278.0, 278.0, -800.0);
     let look_at = Vec3::new(278.0, 278.0, 0.0);
     let dist_to_focus = 10.0;
@@ -142,7 +144,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     );
     Scene {
         hitables: objs,
-        light: Some(light),
+        light: Some(light.0),
         camera: camera,
         bg: Arc::new(AmbientLight::new(&Vec3::new(0.0, 0.0, 0.0))),
     }
