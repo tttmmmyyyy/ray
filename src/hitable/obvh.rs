@@ -573,7 +573,11 @@ where
             &mut inners,
         );
         println!("[OBVH::from_bvh] inners={}", inners.len());
-        // tdfa4b904573eb6bc38ef650dadbe3a39a1a03181, eapot.rs, [OBVH::from_bvh] inners=2360
+        // [a]: 047a7caf47766e2d1bcadc166ed84686d9070883 から [b]: tdfa4b904573eb6bc38ef650dadbe3a39a1a03181 でOBVHが
+        // 劣化してしまった。
+        // teapot.rsで
+        // [b], inners=2360
+        // [a], inners=2332
         Self {
             bbox: bvh.bbox, // ToDo: 数字は適当。
             inners: inners,
