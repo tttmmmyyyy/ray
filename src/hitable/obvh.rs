@@ -1,10 +1,8 @@
 use crate::aabb::Aabb;
-use crate::aliases::{RandGen, Vec3};
+use crate::aliases::RandGen;
+use crate::aliases::Vec3;
 use crate::hit_record::HitRecord;
-use crate::hitable::bvh;
 use crate::hitable::bvh::BVH;
-use crate::hitable::bvh_node::BvhNode;
-use crate::hitable::bvh_node::BvhNodeConstructionRecord;
 use crate::hitable::node_pointer::NodePointer;
 use crate::hitable::Hitable;
 use crate::ray::Ray;
@@ -15,7 +13,6 @@ use std::arch::x86_64::*;
 use std::fmt;
 use std::ops::Shl;
 use std::ops::Shr;
-use std::sync::Arc;
 
 #[repr(align(32))]
 struct BBoxesArray([[[f32; 8]; 3]; 2]);
@@ -583,7 +580,6 @@ mod tests {
     use super::NodePointer;
     use super::BVH;
     use super::OBVH;
-    use crate::hitable::bvh_node::BvhNode;
     use crate::material::lambertian::Lambertian;
     use crate::obj_file::ObjFile;
     use crate::texture::constant::ConstantTexture;

@@ -2,10 +2,7 @@ use ray::aliases::Vec3;
 use ray::background::AmbientLight;
 use ray::camera::Camera;
 use ray::hitable::bvh::BVH;
-use ray::hitable::bvh_node::BvhNode;
 use ray::hitable::hitable_list::HitableList;
-use ray::hitable::hitable_ref::HitableRef;
-use ray::hitable::obvh::OBVH;
 use ray::hitable::rectangle::Rectangle;
 use ray::hitable::sphere::Sphere;
 use ray::hitable::Hitable;
@@ -62,7 +59,7 @@ pub fn scene(aspect_ratio: f32) -> Scene {
         200.0 / 255.0,
         0.5,
     )))));
-    let glass = Arc::new(Glass::new(2.2, 0.0));
+    let _glass = Arc::new(Glass::new(2.2, 0.0));
     let teapot = &mut ObjFile::from_file(Path::new("res/teapot.obj"))
         .unwrap()
         .groups[0];
