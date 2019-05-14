@@ -119,7 +119,6 @@ where
                 debug_assert!(leaves.len() >= 2);
                 idx = leaves.len() / 2;
                 // idx = 1でもよい。teapotでのテストもmengerでのテストも同じ時間かかっていた。
-                // ToDo: とおもったが、OBVHが劣化してしまった。変わった可能性があるのはここだけである。
                 axis = 0;
             }
             Self::sort_by_center(&mut leaves, axis);
