@@ -59,13 +59,13 @@ pub fn scene(aspect_ratio: f32) -> Scene {
     ));
     objs.push(light.clone()); // light
     let lambert = Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(&Vec3::new(
-        1.0, 0.8, 0.8,
+        0.8, 0.8, 1.0,
     )))));
     let _glass = Arc::new(Glass::new(2.0, 0.0));
     let cube_recs = menger_rectangles(
         &Vec3::new(-2.0, 0.0, -2.0),
         &Vec3::new(4.0, 4.0, 4.0),
-        1,
+        5,
         lambert.clone(),
         0,
     );
@@ -135,19 +135,27 @@ fn menger_rectangles(
             } else {
                 (3.0 - 2.0 * f32::sqrt(2.0)) * size
             };
-            fn from_pos_idx_to_ratio(idx: usize) -> f32 {
-                match idx {
-                    0 => 0.0,
-                    1 => (f32::sqrt(2.0) - 1.0),
-                    2 => (2.0 - f32::sqrt(2.0)),
-                    _ => unreachable!(),
+            fn from_pos_idx_to_ratio(idx: usize, is_center: bool) -> f32 {
+                if is_center {
+                    match idx {
+                        0 => 0.0,
+                        2 => (2.0 * f32::sqrt(2.0) - 2.0),
+                        _ => unreachable!(),
+                    }
+                } else {
+                    match idx {
+                        0 => 0.0,
+                        1 => (f32::sqrt(2.0) - 1.0),
+                        2 => (2.0 - f32::sqrt(2.0)),
+                        _ => unreachable!(),
+                    }
                 }
             }
             let inner_pos = pos
                 + size.component_mul(&Vec3::new(
-                    from_pos_idx_to_ratio(x as usize),
-                    from_pos_idx_to_ratio(y as usize),
-                    from_pos_idx_to_ratio(z as usize),
+                    from_pos_idx_to_ratio(x as usize, y == 1 || z == 1),
+                    from_pos_idx_to_ratio(y as usize, z == 1 || x == 1),
+                    from_pos_idx_to_ratio(z as usize, x == 1 || y == 1),
                 ));
             let mut next_mask: u8 = 0;
             for i in 0..3 {
@@ -157,13 +165,8 @@ fn menger_rectangles(
                 if a % 2 == 0 {
                     next_mask = next_mask | (mask & 0b01u8.shl(2 * i + a as usize / 2));
                 }
-                if b % 2 == 0 && c % 2 == 0 {
-                    match a {
-                        0 => next_mask = next_mask | 0b10u8.shl(2 * i),
-                        1 => next_mask = next_mask | 0b11u8.shl(2 * i),
-                        2 => next_mask = next_mask | 0b01u8.shl(2 * i),
-                        _ => unreachable!(),
-                    }
+                if a == 1 && b % 2 == 0 && c % 2 == 0 {
+                    next_mask = next_mask | 0b11u8.shl(2 * i)
                 }
             }
             menger_rectangles(
@@ -171,7 +174,7 @@ fn menger_rectangles(
                 &inner_size,
                 depth - 1,
                 texture.clone(),
-                0, // next_mask, // 作成中アドホック
+                next_mask,
             )
         })
         .flatten()

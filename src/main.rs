@@ -104,13 +104,13 @@ fn trace_rays(
 
 fn main() {
     let start_time = Instant::now();
-    const IMAGE_WIDTH: i32 = 200;
-    const IMAGE_HEIGHT: i32 = 200;
+    const IMAGE_WIDTH: i32 = 800;
+    const IMAGE_HEIGHT: i32 = 800;
     let aspect = IMAGE_WIDTH as f32 / IMAGE_HEIGHT as f32;
-    const RAYS_PER_PIXEL: i32 = 1000;
+    const RAYS_PER_PIXEL: i32 = 10000;
     const THREAD_CNT: i32 = 4;
     const REPORT_INTERVAL: i32 = 200;
-    const FILE_PATH_PREFIX: &'static str = "debug_images/image_";
+    const FILE_PATH_PREFIX: &'static str = "jerusalem_201905142107/image_";
     if get_output_dir_if_exists(Path::new(FILE_PATH_PREFIX)).is_none() {
         println!(
             "Wrong FILE_NAME (directory not exist): {}",
