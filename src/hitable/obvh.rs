@@ -586,12 +586,22 @@ where
         let node_idx = inners.len();
         inners.push(node);
         for i in 0..8 {
-            if children[i].ptr.0.is_leaf() {
-                let node = &mut inners[node_idx];
-                node.children[i] = OBVHNodePointer(children[i].ptr.0);
+            if children[i].bbox.is_empty() {
+                inners[node_idx].children[i] = OBVHNodePointer(NodePointer::empty_leaf());
+            } else if children[i].ptr.0.is_leaf() {
+                inners[node_idx].children[i] = OBVHNodePointer(children[i].ptr.0);
             } else {
-                let idx = Self::add_inner(bvh, children[i], inners);
-                inners[node_idx].children[i] = OBVHNodePointer(NodePointer::new(false, idx));
+                let bvh_node = &bvh.inners[children[i].ptr.0.index()];
+                if bvh_node.bboxes[0].is_empty() || bvh_node.children[0].0.is_empty_leaf() {
+                    assert!(bvh_node.children[1].0.is_leaf());
+                    inners[node_idx].children[i] = OBVHNodePointer(bvh_node.children[1].0);
+                } else if bvh_node.bboxes[1].is_empty() || bvh_node.children[1].0.is_empty_leaf() {
+                    assert!(bvh_node.children[0].0.is_leaf());
+                    inners[node_idx].children[i] = OBVHNodePointer(bvh_node.children[0].0);
+                } else {
+                    let idx = Self::add_inner(bvh, children[i], inners);
+                    inners[node_idx].children[i] = OBVHNodePointer(NodePointer::new(false, idx));
+                }
             }
         }
         node_idx
