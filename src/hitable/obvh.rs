@@ -572,6 +572,8 @@ where
             BVHNodePtrWithBBox::new(BVHNodePointer(NodePointer::root()), bvh.bbox),
             &mut inners,
         );
+        println!("[OBVH::from_bvh] inners={}", inners.len());
+        // tdfa4b904573eb6bc38ef650dadbe3a39a1a03181, eapot.rs, [OBVH::from_bvh] inners=2360
         Self {
             bbox: bvh.bbox, // ToDo: 数字は適当。
             inners: inners,
